@@ -30,7 +30,7 @@ classdef Face < hgsetget
     
     methods
         function obj = Face(nodelist,parent)
-            if ~strcmp('MeshClass',class(parent))
+            if ~strcmp('Mesh',class(parent))
                 error('wrong type for parent')
             end
             set(obj,'nodelist',nodelist);

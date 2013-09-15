@@ -60,7 +60,7 @@ classdef FemCase < hgsetget
             SE2 = SElist(2);
             [global_coordinates, ncambio] = FemCase.nlocal2global(SE1.get('coordinates'),SE2.get('coordinates'));
             global_connections = FemCase.global_connect(SE1.get('connections'),ncambio);
-            mesh_fem = MeshClass(global_coordinates,[SE1.get('connections');global_connections],SE1.get('material'));
+            mesh_fem = Mesh(global_coordinates,[SE1.get('connections');global_connections],SE1.get('material'));
             mesh_fem.set('ncambio',ncambio);
             obj = FemCase(mesh_fem,mesh_fem.sdof(),mesh_fem.sdof());
             SE1.set('ncambio',1:SE1.nnodes())
@@ -284,7 +284,7 @@ classdef FemCase < hgsetget
             scale = 1000;
             hold on
             mesh = obj.get('mesh');
-            mesh = MeshClass(mesh.get('coordinates'),mesh.get('connections'),mesh.get('material'));
+            mesh = Mesh(mesh.get('coordinates'),mesh.get('connections'),mesh.get('material'));
             dis = obj.get('displacements');
             Dis = dis.xyzout();
             mesh.plot('g');
