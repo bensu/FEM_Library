@@ -28,6 +28,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     face = Face.new_face(mesh,coordnum,valuebc);
                     bc = BC(mesh.nnodes,mesh.get('n_node_dofs'), ...
                             mesh.nnel, mesh.get('n_element_dofs'));
+                    bc.get('node_component')
                     bc.simply_supported_face(face,coordnum,mesh);
                     
                     %% LOADS
@@ -37,12 +38,14 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     vector = zeros(3,1);
                     vector(coordload) = q;
                     face = Face.new_face(mesh,coordload,valueload);
-                    loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
-                            mesh.nnel, mesh.get('n_element_dofs'));
+                    loads = Loads(mesh.nnodes,mesh.get('n_dofs_per_node'), ...
+                            mesh.nnel, mesh.get('n_dofs_per_element'));
                     loads.qinface(mesh,face,vector);
                     
                     %% CASE
-                    patch = FemCase(mesh,bc,loads);
+                    patch = FemCase(mesh,mesh.sdof(),mesh.sdof());
+                    patch.set('loads',loads);
+                    patch.set('bc',bc);
                     patch.solve();
                     patch.getMaxStressEle()
                     SA = patch.get('StressArrayEle');
@@ -54,7 +57,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     %% Check
                     
                     dis = patch.get('displacements');
-                    maxval = dis.max_dof_value();
+                    maxval = dis.maxvalue();
                     tol = 1e-12;
                     sigma_theorical = q*sides(coordnum)/E;
                     test_case.verifyEqual(abs(maxval-sigma_theorical)<tol,true)

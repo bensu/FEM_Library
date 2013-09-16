@@ -1,16 +1,17 @@
-classdef Loads < VectorField
+classdef Loads < Compound_Function
     properties
 
     end
 
     methods
-        function obj = Loads(dim_in,sdof)
-            nodelist = zeros(sdof,1);
-            obj = obj@VectorField(dim_in,nodelist);
+        function loads_out = Loads(total_number_of_nodes_in,dofs_per_node_in, ...
+                            total_number_of_elements_in, dofs_per_element_in)
+            loads_out = loads_out@Compound_Function(0,total_number_of_nodes_in,dofs_per_node_in, ...
+                            total_number_of_elements_in, dofs_per_element_in);    
         end
         function qinface1(obj,mesh,face,qvector)
             qvector= reshape(qvector,[],1);
-            [elements coordlist values] = face.faceinelement();
+            [elements, coordlist, values] = face.faceinelement();
             for ele = 1:length(elements)
                 coordnum = coordlist(ele);
                 value = values(ele);
@@ -36,10 +37,10 @@ classdef Loads < VectorField
             obj.xyzout();
         end
         
-        function qinface(obj,mesh,face,qvector)
+        function qinface(loads,mesh,face,qvector)
             qvector = reshape(qvector,1,[]);
-            [elelist facecoord facevalue] = face.faceinelement();
-            NewLoads = zeros(size(obj.xyzout()));
+            [elelist, facecoord, facevalue] = face.faceinelement();
+            NewLoads = zeros(loads.number_of_nodes,loads.dofs_per_node);
             localcoords = zeros(1,3);
             for i = 1:length(elelist)
                 new_element = mesh.element_create(elelist(i));
@@ -69,7 +70,7 @@ classdef Loads < VectorField
                     end
                 end
             end
-            obj.set('nodelist',(obj.xyzout() + NewLoads/2)); %/2 because there was a double in the loop.
+            loads.add_to_node_function(NewLoads/2); %/2 because there was a double in the loop.
         end
         function plot(obj,coordinates,color)
             hold on

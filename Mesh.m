@@ -20,38 +20,38 @@ classdef Mesh < hgsetget
             sca = 1e3;
         end
         function obj = mesh_import(coordstr,connectstr,mate)
-            connections = load(connectstr);
-            connections = connections(:,2:end);
-            coordinates = load(coordstr);
-            connections2 = zeros(size(connections));
-            for i = 1:size(coordinates,1)
-                nodenum = coordinates(i,1);
-                connections2(connections==nodenum) = i;
+            connections_in = load(connectstr);
+            connections_in = connections_in(:,2:end);
+            coordinates_in = load(coordstr);
+            connections2 = zeros(size(connections_in));
+            for i = 1:size(coordinates_in,1)
+                nodenum = coordinates_in(i,1);
+                connections2(connections_in==nodenum) = i;
             end
-            connections = connections2;
-            coordinates = coordinates(:,2:4);
+            connections_in = connections2;
+            coordinates_in = coordinates_in(:,2:4);
             l = Mesh.NXorder();
-            aux = zeros(size(connections));
+            aux = zeros(size(connections_in));
             for i = 1:length(l)
-                aux(:,i) = connections(:,l(i));
+                aux(:,i) = connections_in(:,l(i));
             end
-            connections = aux;
-            coordinates = coordinates/1e4;
-            coordinates = coordinates/Mesh.tometer();
-            obj = Mesh(coordinates,connections,mate);
+            connections_in = aux;
+            coordinates_in = coordinates_in/1e4;
+            coordinates_in = coordinates_in/Mesh.tometer();
+            obj = Mesh(coordinates_in,connections_in,mate);
         end
         function obj = mesh_import2(coordstr,connectstr,mate)
-            connections = load(connectstr);
-            coordinates = load(coordstr);
-            connections2 = zeros(size(connections));
-            for i = 1:size(coordinates,1)
-                nodenum = coordinates(i,1);
-                connections2(connections==nodenum) = i;
+            connections_in = load(connectstr);
+            coordinates_in = load(coordstr);
+            connections2 = zeros(size(connections_in));
+            for i = 1:size(coordinates_in,1)
+                nodenum = coordinates_in(i,1);
+                connections2(connections_in==nodenum) = i;
             end
             
-            coordinates = coordinates/1e4;
-            coordinates = coordinates/Mesh.tometer();
-            obj = Mesh(coordinates,connections,mate);
+            coordinates_in = coordinates_in/1e4;
+            coordinates_in = coordinates_in/Mesh.tometer();
+            obj = Mesh(coordinates_in,connections_in,mate);
         end
         function mesh2D = meshgen2D(type,A,M,E,nu,rho)
             % mesh2D = meshgen2D(A,M,E,nu,rho)
@@ -67,13 +67,13 @@ classdef Mesh < hgsetget
             a = A(1);b = A(2); c = A(3);
             m = M(1);n = M(2); p = M(3);
             x = a/m;y = b/n;z = c/p;
-            coordinates = zeros((n+1)*(m+1)*(p+1),3);
-            connections = zeros(n*m*p,8);
+            coordinates_in = zeros((n+1)*(m+1)*(p+1),3);
+            connections_in = zeros(n*m*p,8);
             count = 1;
             for k = 1:p+1
                 for j = 1:n+1
                     for i = 1:m+1
-                        coordinates(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
+                        coordinates_in(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
                         count = count + 1;
                     end
                 end
@@ -82,20 +82,20 @@ classdef Mesh < hgsetget
             for k = 1:p
                 for j = 1:n
                     for i = 1:m
-                        connections(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
-                        connections(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
+                        connections_in(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_in(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_in(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_in(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_in(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_in(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_in(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
+                        connections_in(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
                         count = count + 1;
                     end
                 end
             end
             mat1 = Material(1,'Iso',E,nu,rho);
-            obj = Mesh(type,coordinates,connections,mat1);
+            obj = Mesh(type,coordinates_in,connections_in,mat1);
         end
     end
     
@@ -115,12 +115,12 @@ classdef Mesh < hgsetget
         
         function value = mincoordval(obj,coordnum)
             coordinatesl = obj.get('coordinates');
-            [val ind] = min(abs(coordinatesl(:,coordnum)));
+            [~, ind] = min(abs(coordinatesl(:,coordnum)));
             value = coordinatesl(ind,coordnum);
         end
         function value = maxcoordval(obj,coordnum)
             coordinatesl = obj.get('coordinates');
-            [val ind] = max(abs(coordinatesl(:,coordnum)));
+            [~, ind] = max(abs(coordinatesl(:,coordnum)));
             value = coordinatesl(ind,coordnum);
         end
         function shift(obj,dis_vector)
@@ -144,7 +144,7 @@ classdef Mesh < hgsetget
             nodelist = [];
             par_plot = [];
             for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
-                elelist = mesh.elementsofnode(nodenum)
+                elelist = mesh.elementsofnode(nodenum);
                 % Finds the elements the node belongs too
                 element = mesh.element_create(elelist(1));
                 if length(elelist) < element.n_nodes    % If
@@ -183,12 +183,12 @@ classdef Mesh < hgsetget
         function nodesin = nodes_in(obj)
             nodesin = 1:size(obj.get('coordinates'),1);      
             nodesin(obj.get('nodesout')) = [];   
-            ncambio = obj.get('ncambio');
-            nodesout = reshape(ncambio(nodesin),1,[]); 
+            ncambio_aux = obj.get('ncambio');
+            nodesout = reshape(ncambio_aux(nodesin),1,[]); % WHAT IS HERE?
         end
         function nodesout = nodes_out(obj)
-            ncambio = obj.get('ncambio');
-            nodesout = reshape(ncambio(obj.get('nodesout')),1,[]);      
+            ncambio_aux = obj.get('ncambio');
+            nodesout = reshape(ncambio_aux(obj.get('nodesout')),1,[]);      
         end 
         function ind = nodesindex(obj,nodelist)
             ndofpernode = obj.ndofspernode();
@@ -217,10 +217,10 @@ classdef Mesh < hgsetget
         end
         function nodenum = findnode(obj,x0)
             nodenum = [];
-            coordinates = obj.get('coordinates');
+            coordinates_aux = obj.get('coordinates');
             tol = 5e-3;
             for i = 1:obj.nnodes()
-                if norm(coordinates(i,:)-x0)<tol;
+                if norm(coordinates_aux(i,:)-x0)<tol;
                     nodenum = i;
                 end
             end
@@ -282,15 +282,15 @@ classdef Mesh < hgsetget
         
         function plot(obj,colour)
             hold on
-            escala = 10;
             npoints = 2;
             outfaces = obj.outface();
-            coordinates = obj.get('coordinates');
+            coordinates_aux = obj.get('coordinates');
             par_plot_now = outfaces.get('par_plot');
             X = zeros(npoints,3);
             for i = 1:size(par_plot_now,1)
                 for j = 1:3
-                    X(:,j) = linspace(coordinates(par_plot_now(i,1),j),coordinates(par_plot_now(i,2),j),npoints)';
+                    X(:,j) = linspace(coordinates_aux(par_plot_now(i,1),j), ...
+                               coordinates_aux(par_plot_now(i,2),j),npoints)';
                 end
                 plot3(X(:,1),X(:,2),X(:,3),colour);
             end
