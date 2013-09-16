@@ -58,8 +58,7 @@ classdef Mesh < hgsetget
             coords_aux = mesh3D.get('coordinates');
             connect_aux = mesh3D.get('connections');
             material_aux = mesh3D.get('material');
-            mesh2D = Mesh(type,coords_aux(1:mesh3D.nnodes/2,1:2), ...
-                            connect_aux(:,1:4),material_aux);            
+            mesh2D = Mesh(type,coords_aux(:,1:2),connect_aux(:,1:4),material_aux);            
         end
         function obj = meshgen(type,A,M,E,nu,rho)
             a = A(1);b = A(2); c = A(3);
@@ -135,33 +134,35 @@ classdef Mesh < hgsetget
         function outfaces = outface(mesh)
             % outfaces = outface(mesh)
             % Finds the outer nodes and returns an out face object
+            % It also creates the par_plot array that helps to help the
+            % mesh
             connect = mesh.get('connections');
             nodelist = [];
             par_plot = [];
             for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
-                elelist = mesh.elementsofnode(nodenum)
                 % Finds the elements the node belongs too
-                element = mesh.element_create(elelist(1));
-                if length(elelist) < element.n_nodes    % If
-                    nodelist = [nodelist nodenum];
+                elelist = mesh.elementsofnode(nodenum);                                    
+                element = mesh.elementcreate(elelist(1));
+                % If it belongs to less than the maximum, it's in an edge
+                if length(elelist) < element.n_nodes    
+                    nodelist = [nodelist nodenum];  % Add it to the list
                     for i = 1:length(elelist)
-                    	allnodes = connect(elelist(i),:);  %should be [n_nodesx1]
                         other_nodes = allnodes(element.connected_nodes(nodenum == allnodes));
                         for j = 1:length(other_nodes)
-                            if any(other_nodes(j)==nodelist)
+                            if any(other_nodes(j) == nodelist)
                                 par_plot = [par_plot; nodenum other_nodes(j)];
                             end
                         end
                     end
                 end
             end
-%             big_elelist = unique(big_elelist);
             outfaces = Face(nodelist,mesh);
             outfaces.set('par_plot',par_plot);
         end
         function facenodelist = facenodelist(mesh,face)
             facenodelist = face.get('nodelist');
         end 
+        
         %% Node Methods
         function innodes = innernodes(obj)
             outface = obj.outface();
@@ -227,20 +228,18 @@ classdef Mesh < hgsetget
         end
         
         %% Assembly Methods
-        function element = element_create(mesh,ele)
+        function element = elementcreate(mesh,ele)
             connect = mesh.get('connections');
             coordinat = mesh.get('coordinates');
-            for i = 1:mesh.nodesperelement()
+            for i = 1:obj.nodesperelement()
                 nodos(i) = Node(connect(ele,i),coordinat(connect(ele,i),:),mesh);
             end
             % BIG PROBLEM HERE -> How to initialize by element type?
             switch mesh.element_type
                 case 'Mech_H8'
-                    element = Mech_H8(nodos,mesh.get('material'));   % HARDCODED
+                    element = Mech_H8(nodos,j.get('material'));   % HARDCODED
                 case 'Mech_Q4'
-                    element = Mech_Q4(nodos,mesh.get('material'));
-                otherwise
-                    error(strcat('Element Type: ',mesh.element_type,' not found'));
+                    element = Mech_Q4(nodos,obj.get('material'));
             end
         end
         function stiffness = stiff(obj)
@@ -248,7 +247,7 @@ classdef Mesh < hgsetget
                 stiffness = sparse(obj.sdof(),obj.sdof());
                 gaussn = 2;
                 for ele = 1:nnel
-                    element = obj.element_create(ele);
+                    element = obj.elementcreate(ele);
                     kele = element.K(gaussn);
                     ind = element.ldofsid();
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;

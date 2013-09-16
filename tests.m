@@ -2,8 +2,13 @@ clc
 clear all
 clear clases
 
+%% Runs the test suit for the whole Library
+%  Every Test should be added sequentially.
 
 addpath('./tests')
 
-patch = Test_Mech_H8;
-run(patch)
+patch_mech_H8 = Test_Mech_H8;
+run(patch_mech_H8)
+
+patch_mech_Q4 = Test_Mech_Q4;
+run(patch_mech_Q4)

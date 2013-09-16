@@ -1,22 +1,21 @@
-classdef Test_Mech_H8 < matlab.unittest.TestCase
+classdef Test_Mech_Q4 < matlab.unittest.TestCase
   
     methods (Test)
         function patch_test(test_case)
             for dim = 1:2
-                for coordnum = 1:3
+                for coordnum = 1:2
                     plot_on = false;
                     %% Mesh & Material
                     % Cubes dimension a,b,c
                     % Number of elements in each cube edge.
                     a = 2; m = dim;
                     b = 1; n = dim;
-                    c = 3; p = dim;
                     
                     E = 2;                                % Youngs modulus
                     nu = 0;                               % Poisson's ratio
                     rho = 7840;                           % Density
-                    sides = [a,b,c];
-                    mesh = Mesh.meshgen('Mech_H8',sides,[m n p],E,nu,rho);
+                    sides = [a,b];
+                    mesh = Mesh.meshgen2D('Mech_Q4',sides,[m n],E,nu,rho);
                     
                     % Break Mesh Symmetry
                     delta = 0.1;
@@ -32,7 +31,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     q = 2;
                     coordload = coordnum;
                     valueload = sides(coordload);
-                    vector = zeros(3,1);
+                    vector = zeros(2,1);
                     vector(coordload) = q;
                     face = Face.new_face(mesh,coordload,valueload);
                     loads = Loads(mesh.sdof());

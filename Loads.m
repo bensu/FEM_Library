@@ -42,7 +42,7 @@ classdef Loads < VectorField
             NewLoads = zeros(size(obj.xyzout()));
             localcoords = zeros(1,3);
             for i = 1:length(elelist)
-                new_element = mesh.elementcreate(elelist(i));
+                new_element = mesh.element_create(elelist(i));
                 nodes = new_element.nodeidlist();
                 gaussn = 2;
                 [gaussp, gaussw] = lgwt(gaussn,-1,1);

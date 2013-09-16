@@ -1,5 +1,6 @@
 classdef VectorField < hgsetget
     properties
+        dim         % components per node
         nodelist
     end
     methods (Static)
@@ -9,12 +10,12 @@ classdef VectorField < hgsetget
         end
     end
     methods
-        function obj = VectorField(nodelist_in)
+        function obj = VectorField(dim,nodelist_in)
             set(obj,'nodelist',nodelist_in);
         end
         function xyz = xyzout(obj)
             %Takes a (3*N)x1 from nodelist and returns a Nx3
-            xyz = reshape(obj.get('nodelist')',3,[])';
+            xyz = reshape(obj.get('nodelist')',dim,[])';
         end
         function set.nodelist(obj,nodelist_in)
             if (size(nodelist_in,1)==1 && size(nodelist,2)~=3)

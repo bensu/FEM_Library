@@ -187,7 +187,7 @@ classdef FemCase < hgsetget
             gaussn = 2;
             [gaussp, gaussw] = lgwt(gaussn,-1,1);
             for ele = 1:obj.get('mesh').nnel()
-                new_element = obj.get('mesh').elementcreate(ele);
+                new_element = obj.get('mesh').element_create(ele);
                 count = 1;
                 for i = 1:gaussn
                     xi = gaussp(i);
@@ -284,7 +284,8 @@ classdef FemCase < hgsetget
             scale = 1000;
             hold on
             mesh = obj.get('mesh');
-            mesh = Mesh(mesh.get('coordinates'),mesh.get('connections'),mesh.get('material'));
+            mesh = Mesh(mesh.get('element_type'),mesh.get('coordinates'), ...
+                    mesh.get('connections'),mesh.get('material'));
             dis = obj.get('displacements');
             Dis = dis.xyzout();
             mesh.plot('g');

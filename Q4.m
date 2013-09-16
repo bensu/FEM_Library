@@ -1,14 +1,12 @@
 classdef Q4 < Element
     methods 
-        function obj = Q4(nodes,material,element_dofs_in, ...
-                                element_displacements_in)
-            require(length(nodes)==4,'Needs 8 nodes')
-            require(length(nodes(1).get('coordinates'))==3, ...
-                'Mesh should be 3D');
-            obj = obj@Element(nodes,material,element_dofs_in, ...
-                                element_displacements_in);
+        function obj = Q4(nodes,material)
+            require(length(nodes)==4,'Needs 4 nodes')
+            require(length(nodes(1).get('coordinates'))==2, ...
+                'Mesh should be 2D');
+            obj = obj@Element(nodes,material);
         end  
-        %% Q4 functions
+        %% Shape Functions
         % should be inherited from Q4 element
         function [shapeQ4,dNdxiQ4_out,dNdetaQ4_out] = shapefunctions(element,xi,eta)
 
@@ -67,8 +65,17 @@ classdef Q4 < Element
             dNdetaQ4_out(3) = 0.25*(1-xi);
             dNdetaQ4_out(4) = 0.25*(1+xi);
         end
+        function dNdmuQ4_out = dN_dmu(element,xi,eta)
+            error('dN_dmu should not be caled on a 2D element')
+        end
         function dN_out = DN(element,xi,eta)
-            dN_out = 
+            dN_out = [element.dN_dxi;element.dN_deta];
+        end
+        
+        function connected_nodes = connected_nodes(element,nodenum)
+            AUX = [2 3;1 4;1 4;2 3];
+            connected_nodes = AUX(nodenum,:);
+        end
     end
 end
     

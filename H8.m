@@ -73,7 +73,7 @@ classdef (Abstract) H8 < Element
                    element.dN_deta(xi,eta,mu);
                    element.dN_dmu(xi,eta,mu)];
         end
-        function connected_nodes = connectednodes(element,nodenum)
+        function connected_nodes = connected_nodes(element,nodenum)
             AUX = [2 3 5; 1 4 6; 1 4 7; 2 3 8; 1 6 7; 2 5 8; 3 5 8; 4 6 7];
             connected_nodes = AUX(nodenum,:);
         end
