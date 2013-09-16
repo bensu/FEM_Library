@@ -98,7 +98,7 @@ classdef FemCase < hgsetget
         %% Solve
 
         function solve_condensed(obj)
-            
+            % Takes into account superelements
             SElist = obj.get('SElist');
             SE1 = SElist(1);
             SE2 = SElist(2);
