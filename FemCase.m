@@ -195,8 +195,8 @@ classdef FemCase < hgsetget
                         eta = gaussp(j);
                         for k = 1:gaussn
                             mu = gaussp(k);
-                            aux = new_element.Bmatrix(xi,eta,mu)*displacements(new_element.ldofsid());
-                            C = new_element.get('material').get('C');
+                            aux = new_element.B(xi,eta,mu)*displacements(new_element.ldofsid());
+                            C = new_element.C;
                             StrainArray(ele,count,:) = aux;
                             StressArray(ele,count,:) = C*aux;
                             count = count + 1;
