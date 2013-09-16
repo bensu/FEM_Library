@@ -4,9 +4,9 @@ classdef Loads < VectorField
     end
 
     methods
-        function obj = Loads(sdof)
+        function obj = Loads(dim_in,sdof)
             nodelist = zeros(sdof,1);
-            obj = obj@VectorField(nodelist);
+            obj = obj@VectorField(dim_in,nodelist);
         end
         function qinface1(obj,mesh,face,qvector)
             qvector= reshape(qvector,[],1);

@@ -80,20 +80,21 @@ classdef FemCase < hgsetget
         
         %% Initialize
         
-        function obj = FemCase(meshin,bcin,loadsin)
-            set(obj,'mesh',meshin);
+        function femcase = FemCase(meshin,bcin,loadsin)
+            set(femcase,'mesh',meshin);
+            n_node_dofs = femcase.n_node_dofs;
             if strcmp(class(bcin),'BC')
                 Bc = bcin;
             elseif isempty(bcin)
-                Bc = BC(true(meshin.nnodes(),3));
-            else Bc = BC(bcin);
+                Bc = BC(n_node_dofs,true(meshin.nnodes(),3));
+            else Bc = BC(n_node_dofs,bcin);
             end
-            set(obj,'bc',Bc);
+            set(femcase,'bc',Bc);
             if isempty(loadsin)
                 loadsin = zeros(meshin.nnodes(),3);
             else
             end
-            set(obj,'loads',Loads(loadsin));
+            set(femcase,'loads',Loads(n_node_dofs,loadsin));
         end
         %% Solve
 
@@ -299,6 +300,14 @@ classdef FemCase < hgsetget
             hold off
         end
         
+        %% Helpers
+        
+        function n = n_node_dofs(femcase)
+            n = femcase.get('mesh').get('n_node_dofs');
+        end
+        function n = n_element_dofs(femcase)
+            n = femcase.get('mesh').get('n_element_dofs');
+        end
         
     end
     

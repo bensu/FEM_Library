@@ -1,7 +1,11 @@
 classdef (Abstract) H8 < Element
     methods
-        function ele_out = H8(nodes_in,material_in)
-            ele_out = ele_out@Element(nodes_in,material_in);
+        function ele_out = H8(n_node_dofs,n_element_dofs,nodes_in,material_in)
+            require(length(nodes_in)==8,'Needs 8 nodes')
+            require(length(nodes_in(1).get('coordinates'))==3, ...
+                'Mesh should be 3D');
+            ele_out = ele_out@Element(n_element_dofs,n_node_dofs, ...
+                                nodes_in,material_in);
         end
         function N_out = N(element,xi,eta,mu)
         % N_out [1x8] = N(element,xi,eta,mu) 

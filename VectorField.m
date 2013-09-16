@@ -10,15 +10,16 @@ classdef VectorField < hgsetget
         end
     end
     methods
-        function obj = VectorField(dim,nodelist_in)
+        function obj = VectorField(dim_in,nodelist_in)
             set(obj,'nodelist',nodelist_in);
+            set(obj,'dim',dim_in);
         end
         function xyz = xyzout(obj)
             %Takes a (3*N)x1 from nodelist and returns a Nx3
-            xyz = reshape(obj.get('nodelist')',dim,[])';
+            xyz = reshape(obj.get('nodelist')',obj.get('dim'),[])';
         end
         function set.nodelist(obj,nodelist_in)
-            if (size(nodelist_in,1)==1 && size(nodelist,2)~=3)
+            if (size(nodelist_in,1)==1 && size(nodelist_in,2)~=3)
                 aux = nodelist_in';
             elseif size(nodelist_in,2)==1
                 aux = nodelist_in;

@@ -6,6 +6,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                 for coordnum = 1:3
                     plot_on = false;
                     %% Mesh & Material
+                    n_dim = 3;
                     % Cubes dimension a,b,c
                     % Number of elements in each cube edge.
                     a = 2; m = dim;
@@ -25,7 +26,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     %% BC
                     valuebc = 0;
                     face = Face.new_face(mesh,coordnum,valuebc);
-                    bc = BC(mesh.sdof());
+                    bc = BC(n_dim,mesh.sdof());
                     bc.simplysupportedface(face,coordnum,mesh);
                     
                     %% LOADS
@@ -35,7 +36,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     vector = zeros(3,1);
                     vector(coordload) = q;
                     face = Face.new_face(mesh,coordload,valueload);
-                    loads = Loads(mesh.sdof());
+                    loads = Loads(n_dim,mesh.sdof());
                     loads.qinface(mesh,face,vector);
                     
                     %% CASE

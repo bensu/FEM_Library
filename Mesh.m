@@ -8,6 +8,8 @@ classdef Mesh < hgsetget
         nodesout
         parent
         ncambio
+        n_node_dofs         % Dofs per node
+        n_element_dofs      % Dofs that belong only to the element, not the nodes
     end
     
     methods (Static)
@@ -104,6 +106,9 @@ classdef Mesh < hgsetget
             set(obj,'connections',connections);
             set(obj,'material',material);
             set(obj,'element_type',type);
+            ele = obj.element_create(1);
+            set(obj,'n_node_dofs',ele.get('n_node_dofs'));       % Dofs per node
+            set(obj,'n_element_dofs',ele.get('n_element_dofs'));  
         end
 
         %% Coordinates Methods

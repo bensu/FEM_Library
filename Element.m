@@ -3,8 +3,8 @@ classdef (Abstract) Element < hgsetget
         nodes
         material
         parent
-        n_ele_dofs
-        n_dofs_per_node
+        n_element_dofs
+        n_node_dofs
     end
     methods (Abstract)
         N_out = N(element,xi,eta,mu)
@@ -15,9 +15,11 @@ classdef (Abstract) Element < hgsetget
     end
         
     methods
-        function obj = Element(nodes,material)
+        function obj = Element(n_node_dofs_in,n_element_dofs_in,nodes,material)
             set(obj,'nodes',nodes);
             set(obj,'material',material);
+            set(obj,'n_node_dofs',n_node_dofs_in);
+            set(obj,'n_element_dofs',n_element_dofs_in);
         end
         function nodeids = nodeidlist(obj)
         	nodelist = obj.get('nodes');

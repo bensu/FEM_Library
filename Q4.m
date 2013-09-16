@@ -1,10 +1,11 @@
 classdef Q4 < Element
     methods 
-        function obj = Q4(nodes,material)
-            require(length(nodes)==4,'Needs 4 nodes')
-            require(length(nodes(1).get('coordinates'))==2, ...
+        function ele_out = Q4(n_node_dofs,n_element_dofs,nodes_in,material_in)
+            require(length(nodes_in)==4,'Needs 4 nodes')
+            require(length(nodes_in(1).get('coordinates'))==2, ...
                 'Mesh should be 2D');
-            obj = obj@Element(nodes,material);
+            ele_out = ele_out@Element(n_element_dofs,n_node_dofs, ...
+                                nodes_in,material_in);
         end  
         %% Shape Functions
         % should be inherited from Q4 element

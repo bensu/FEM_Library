@@ -4,9 +4,9 @@ classdef BC < VectorField
     end
 
     methods
-        function obj = BC(sdof)
+        function obj = BC(dim_in,sdof)
             nodelist = true(sdof,1);
-            obj = obj@VectorField(nodelist);
+            obj = obj@VectorField(dim_in,nodelist);
         end
         function obj = addnodeconstraint(obj,nodeid,coordnum)
             previous = obj.xyzout();
