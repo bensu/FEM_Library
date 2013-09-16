@@ -185,7 +185,7 @@ classdef FemCase < hgsetget
             StressArrayEle = zeros(obj.get('mesh').nnel(),6);
             StrainArrayEle = StressArrayEle;
             gaussn = 2;
-            [gaussp gaussw] = lgwt(gaussn,-1,1);
+            [gaussp, gaussw] = lgwt(gaussn,-1,1);
             for ele = 1:obj.get('mesh').nnel()
                 new_element = obj.get('mesh').elementcreate(ele);
                 count = 1;
