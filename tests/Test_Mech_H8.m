@@ -61,7 +61,6 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     
                 end
             end 
-            patch.plot([])
         end
     end
 end
