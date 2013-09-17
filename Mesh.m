@@ -56,24 +56,30 @@ classdef Mesh < hgsetget
         function mesh2D = meshgen2D(type,A,M,E,nu,rho)
             % mesh2D = meshgen2D(A,M,E,nu,rho)
             % Generates a 2D rectangular mesh
-            mesh3D = Mesh.meshgen(type,[A 1],[M 1],E,nu,rho);
-            coords_aux = mesh3D.get('coordinates');
-            connect_aux = mesh3D.get('connections');
-            material_aux = mesh3D.get('material');
-            mesh2D = Mesh(type,coords_aux(1:mesh3D.nnodes/2,1:2), ...
-                            connect_aux(:,1:4),material_aux);            
+            [coords_aux, connect_aux] = Mesh.rectangle_mesh([A 1],[M 1]);
+            nnodes = size(coords_aux,1);
+            material_in = Material(1,'Iso',E,nu,rho);
+            mesh2D = Mesh(type,coords_aux(1:nnodes/2,1:2), ...
+                            connect_aux(:,1:4),material_in);            
         end
-        function obj = meshgen(type,A,M,E,nu,rho)
+        function mesh3D = meshgen(type,A,M,E,nu,rho)
+            % mesh3D = meshgen(A,M,E,nu,rho)
+            % Generates a 3D rectangular mesh
+            [coordinates_in, connections_in] = Mesh.rectangle_mesh(A,M);
+            mat1 = Material(1,'Iso',E,nu,rho);
+            mesh3D = Mesh(type,coordinates_in,connections_in,mat1);
+        end
+        function [coordinates_out, connections_out] = rectangle_mesh(A,M)
             a = A(1);b = A(2); c = A(3);
             m = M(1);n = M(2); p = M(3);
             x = a/m;y = b/n;z = c/p;
-            coordinates_in = zeros((n+1)*(m+1)*(p+1),3);
-            connections_in = zeros(n*m*p,8);
+            coordinates_out = zeros((n+1)*(m+1)*(p+1),3);
+            connections_out = zeros(n*m*p,8);
             count = 1;
             for k = 1:p+1
                 for j = 1:n+1
                     for i = 1:m+1
-                        coordinates_in(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
+                        coordinates_out(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
                         count = count + 1;
                     end
                 end
@@ -82,20 +88,18 @@ classdef Mesh < hgsetget
             for k = 1:p
                 for j = 1:n
                     for i = 1:m
-                        connections_in(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_in(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_in(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_in(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_in(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections_in(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections_in(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
-                        connections_in(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
                         count = count + 1;
                     end
                 end
             end
-            mat1 = Material(1,'Iso',E,nu,rho);
-            obj = Mesh(type,coordinates_in,connections_in,mat1);
         end
     end
     

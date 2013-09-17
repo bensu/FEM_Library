@@ -17,7 +17,6 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     rho = 7840;                           % Density
                     sides = [a,b];
                     mesh = Mesh.meshgen2D('Mech_Q4',sides,[m n],E,nu,rho);
-                    
                     % Break Mesh Symmetry
                     delta = 0.1;
                     mesh.randominner(delta);    % Moves an inner node by delta
@@ -25,8 +24,9 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     %% BC
                     valuebc = 0;
                     face = Face.new_face(mesh,coordnum,valuebc);
-                    bc = BC(n_dim,mesh.sdof());
-                    bc.simplysupportedface(face,coordnum,mesh);
+                    bc = BC(mesh.nnodes,mesh.get('n_node_dofs'), ...
+                            mesh.nnel, mesh.get('n_element_dofs'));
+                    bc.simply_supported_face(face,coordnum,mesh);
                     
                     %% LOADS
                     q = 2;
@@ -35,13 +35,12 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     vector = zeros(2,1);
                     vector(coordload) = q;
                     face = Face.new_face(mesh,coordload,valueload);
-                    loads = Loads(n_dim,mesh.sdof());
-                    loads.qinface(mesh,face,vector);
-                    
+                    loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
+                            mesh.nnel, mesh.get('n_element_dofs'));
+                    loads.qinface(mesh,face,vector);                                      
+                                    
                     %% CASE
-                    patch = FemCase(mesh,mesh.sdof(),mesh.sdof());
-                    patch.set('loads',loads);
-                    patch.set('bc',bc);
+                    patch = FemCase(mesh,bc,loads);
                     patch.solve();
                     patch.getMaxStressEle()
                     SA = patch.get('StressArrayEle');

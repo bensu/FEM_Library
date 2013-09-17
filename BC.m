@@ -36,29 +36,26 @@ classdef BC < Compound_Function
                 obj.support_node_by_id(nodelistids(i),coordnum);
             end
         end
-        function simply_supported_face(obj,face,coordnum,mesh) %missing a point
-            coordinates = mesh.get('coordinates');
+        function simply_supported_face(bc,face,coordnum,mesh) %missing a point
+            coords = mesh.get('coordinates');
             facelist = mesh.facenodelist(face);
             %first fixed point
-            nodeid = facelist(1);
-            obj.fix_node_by_id(nodeid);
+            bc.fix_node_by_id(facelist(1));
             %face
-            obj.face_constraint(face,coordnum,mesh);
-            u = zeros(3,1);
-            u(coordnum) = 1;
-            iteration = 1;
-            log = 0;
-            iterationlimit = 1;
-            while and(log == 0,iterationlimit<100)
-                iteration = iteration + 1;
-                coordnum2 = find(cross(u,coordinates(nodeid,:) - coordinates(nodeid+1,:)));
-                if ~isempty(coordnum2)
-                    obj.support_node_by_id(nodeid+1,coordnum2);
-                    log = 1;
-                else nodeid = nodeid + 1;
-                end
+            bc.face_constraint(face,coordnum,mesh);
+            
+            dim = size(coords,2);
+            switch size(coords,2)
+                case 2
+                    orthogonal_coord = mod(coordnum,2)+1;
+                case 3
+                    v1 = zeros(1,dim);
+                    v1(coordnum) = 1;
+                    v2 = coords(facelist(1),:) - coords(facelist(2),:);
+                    orthogonal_coord = find(cross(v1,v2));
             end
-          
+                                
+            bc.support_node_by_id(facelist(2),orthogonal_coord);          
         end  
         function plot(obj,coordinates,color)
             hold on

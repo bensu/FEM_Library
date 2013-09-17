@@ -47,7 +47,6 @@ classdef Vector_Function < hgsetget
         end
         function edit_component_part_by_id(vector,component_id,part,scalar_in)
             % Only for scalar values
-            vector.get('dofs_per_component')
             require(part<=vector.get('dofs_per_component'), 'Wrong component too big')
             fun_list = vector.get('component_function');
             fun_list(component_id,part) = scalar_in;
