@@ -24,6 +24,9 @@ classdef FemCase < hgsetget
         MinStressIndEle
         MinStressPointEle
     end
+    properties (Dependent)
+        dim
+    end
     
     methods (Static)
    
@@ -188,28 +191,41 @@ classdef FemCase < hgsetget
         %% Stress
         function tensors(femcase)
             dis_aux = femcase.get('displacements').all_dofs;
-            StressA = zeros(femcase.nelements,8,6);
+            StressA = zeros(femcase.nelements,femcase.n_ele_nodes, ...
+                                femcase.n_stress_components);
             StrainA = StressA;
-            StressA_Ele = zeros(femcase.nelements,6);
+            StressA_Ele = zeros(femcase.nelements, ...
+                                femcase.n_stress_components);
             StrainA_Ele = StressA_Ele;
             gaussn = 2;
             gaussp = lgwt(gaussn,-1,1);
             for ele = 1:femcase.nelements
-                new_element = femcase.get('mesh').element_create(ele);
+                element = femcase.get('mesh').element_create(ele);
                 count = 1;
                 for i = 1:gaussn
                     xi = gaussp(i);
                     for j = 1:gaussn
                         eta = gaussp(j);
-                        for k = 1:gaussn
-                            mu = gaussp(k);
-                            aux = new_element.B(xi,eta,mu)*dis_aux(new_element.ldofsid());
-                            C = new_element.C;
+                        if element.dim == 3
+                            for k = 1:gaussn
+                                mu = gaussp(k);
+                                aux = element.B([xi,eta,mu])* ...
+                                            dis_aux(element.ldofsid());
+                                C = element.C;
+                                StrainA(ele,count,:) = aux;
+                                StressA(ele,count,:) = C*aux;
+                                count = count + 1;
+                                StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/(2^element.dim);
+                                StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/(2^element.dim);
+                            end
+                        elseif element.dim == 2
+                            aux = element.B([xi,eta])*dis_aux(element.ldofsid());
+                            C = element.C;
                             StrainA(ele,count,:) = aux;
                             StressA(ele,count,:) = C*aux;
                             count = count + 1;
-                            StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/8;
-                            StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/8;
+                            StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/(2^element.dim);
+                            StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/(2^element.dim);
                         end
                     end
                 end
@@ -248,34 +264,33 @@ classdef FemCase < hgsetget
                     obj.set('MinStressPoint',MaxStressPoint)
             end
         end
-        function ExtremeStressElement(obj,opts)
-            StressArrayEle = obj.get('StressArrayEle');
-            StrainArrayEle = obj.get('StrainArrayEle');
-            coordinates = obj.get('mesh').get('coordinates');
-            connections = obj.get('mesh').get('connections');
-            MaxStressEle = zeros(3,1);
-            MaxStressIndEle = zeros(3,1);
-            MaxStressPointEle = zeros(3,3);
+        function ExtremeStressElement(femcase,opts)
+            StressAE = femcase.get('StressArrayEle');
+            coordinates = femcase.get('mesh').get('coordinates');
+            connections = femcase.get('mesh').get('connections');
+            MaxStressE = zeros(femcase.dim,1);
+            MaxStressIndE = zeros(femcase.dim,1);
+            MaxStressPointE = zeros(femcase.dim);
             for i = 1:3
                 switch opts
                     case 1
-                        [val ind] = max(StressArrayEle(:,i));
+                        [val, ind] = max(StressAE(:,i));
                     case 2
-                        [val ind] = min(StressArrayEle(:,i));
+                        [val, ind] = min(StressAE(:,i));
                 end   
-                MaxStressEle(i) = val;
-                MaxStressIndEle(i) = ind;
-                MaxStressPointEle(i,:) = coordinates(connections(ind,1),:); %Devuelve la coordenada del nodo uno de ese elemento
+                MaxStressE(i) = val;
+                MaxStressIndE(i) = ind;
+                MaxStressPointE(i,:) = coordinates(connections(ind,1),:); %Devuelve la coordenada del nodo uno de ese elemento
             end
             switch opts
                 case 1
-                    obj.set('MaxStressEle',MaxStressEle)
-                    obj.set('MaxStressIndEle',MaxStressIndEle)
-                    obj.set('MaxStressPointEle',MaxStressPointEle)
+                    femcase.set('MaxStressEle',MaxStressE)
+                    femcase.set('MaxStressIndEle',MaxStressIndE)
+                    femcase.set('MaxStressPointEle',MaxStressPointE)
                 case 2
-                    obj.set('MinStressEle',MaxStressEle)
-                    obj.set('MinStressIndEle',MaxStressIndEle)
-                    obj.set('MinStressPointEle',MaxStressPointEle)
+                    femcase.set('MinStressEle',MaxStressE)
+                    femcase.set('MinStressIndEle',MaxStressIndE)
+                    femcase.set('MinStressPointEle',MaxStressPointE)
             end
         end
         
@@ -290,18 +305,10 @@ classdef FemCase < hgsetget
             scale = 1000;
             hold on
             mesh_aux = obj.get('mesh');
-            mesh_aux = Mesh(mesh_aux.get('element_type'),mesh_aux.get('coordinates'), ...
-                    mesh_aux.get('connections'),mesh_aux.get('material'));
-            dis = obj.get('displacements');
-            Dis = dis.node_function;
             mesh_aux.plot('g');
-            bc_aux = obj.get('bc');
-            bc_aux = VectorField(~bc_aux.get('nodelist'));
-            bc_aux.plotVF(mesh_aux.get('coordinates'),'k')
-            if ~isempty(dis)
-                dis.plotVF(mesh_aux.get('coordinates'),'b')
-            end
-            obj.get('loads').plotVF(mesh_aux.get('coordinates'),'r');
+            mesh_aux.plot_function(obj.get('displacements'),[],'quiver','b')
+            mesh_aux.plot_function(obj.get('loads'),[],'quiver','r')
+            mesh_aux.plot_function(obj.get('bc'),[],'quiver','k')
             hold off
         end
         
@@ -319,7 +326,15 @@ classdef FemCase < hgsetget
         function n = nelements(femcase)
             n = femcase.get('mesh').nnel;
         end
-        
+        function n = n_ele_nodes(femcase)
+            n = femcase.get('mesh').nodesperelement;
+        end
+        function n = n_stress_components(femcase)
+            n = femcase.get('mesh').element_create(1).n_stress_components;
+        end
+        function n = get.dim(femcase)
+            n = femcase.get('mesh').element_create(1).dim;
+        end
     end
     
     

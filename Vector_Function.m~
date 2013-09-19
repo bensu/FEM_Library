@@ -47,7 +47,7 @@ classdef Vector_Function < hgsetget
         end
         function edit_component_part_by_id(vector,component_id,part,scalar_in)
             % Only for scalar values
-            require(part<=vector.get('dofs_per_component'), 'Wrong component too big');
+            require(part<=vector.get('dofs_per_component'), 'Wrong component too big')
             fun_list = vector.get('component_function');
             fun_list(component_id,part) = scalar_in;
             vector.set('component_function',fun_list);
@@ -56,7 +56,9 @@ classdef Vector_Function < hgsetget
         function add_function(vector,function_in)
             vector.set('component_function',vector.get('component_function')+function_in);
         end
-       
+        
+
+        
         %% Helpers
         function num = number_of_dofs(vector_fun)
             num = vector_fun.get('dofs_per_component')* ...

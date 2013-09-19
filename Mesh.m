@@ -215,7 +215,7 @@ classdef Mesh < hgsetget
             innodes = obj.innernodes();
             if ~isempty(innodes)
                 coord = obj.get('coordinates');
-                coord(innodes(1),:) = coord(innodes(1),:) + [delta 0 0];
+                coord(innodes(1),1) = coord(innodes(1),1) + delta;
                 obj.set('coordinates',coord);
             end
         end
@@ -281,24 +281,54 @@ classdef Mesh < hgsetget
         function out = nodesperelement(obj) %nodes per element
             out = size(get(obj,'connections'),2);
         end
+        function out = dim(obj)    %number of dofs per node
+            out = size(get(obj,'coordinates'),2);
+        end
+        
         
         %% Plot
         
-        function plot(obj,colour)
+        function plot(mesh,colour)
             hold on
             npoints = 2;
-            outfaces = obj.outface();
-            coordinates_aux = obj.get('coordinates');
+            outfaces = mesh.outface();
+            coordinates_aux = mesh.get('coordinates');
             par_plot_now = outfaces.get('par_plot');
             X = zeros(npoints,3);
             for i = 1:size(par_plot_now,1)
-                for j = 1:3
+                for j = 1:mesh.dim
                     X(:,j) = linspace(coordinates_aux(par_plot_now(i,1),j), ...
                                coordinates_aux(par_plot_now(i,2),j),npoints)';
                 end
                 plot3(X(:,1),X(:,2),X(:,3),colour);
             end
             hold off
+        end
+        
+                %% Plot
+        
+        function plot_function(mesh,vf,dim,type,color)
+        % plot(vf,dim,type,color)
+        % dim: Which dimensions of the Vector functio to Plot
+        %      If it is a displacement, U = [u,v,w], u can be plotted by
+        %      specifying dim = 1.
+        % type: patch for 1 dimension
+        %       quiver for 2 or 3 dimensions 
+            coords = mesh.get('coordinates');
+            if mesh.dim == 2
+                coords = [coords zeros(size(coords,1),1)];
+            end
+            switch type
+                case 'quiver'
+                    require(any(vf.dofs_per_node == [2,3]), ...
+                                    'Wrong Dimension for Quiver');
+                    quiver3(coords(:,1),coords(:,2),coords(:,3), ...
+                        vf.node_function(:,1),vf.node_function(:,2), ...
+                            vf.node_function(:,3));
+                case 'patch'
+                    require(length(dim)==1 && vf.dofs_per_component==1)
+                    
+            end        
         end
     end
 end

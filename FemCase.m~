@@ -58,13 +58,13 @@ classdef FemCase < hgsetget
         function obj =  case_from_SElist(SElist)
             SE1 = SElist(1);
             SE2 = SElist(2);
-            [global_coordinates, ncambio] = FemCase.nlocal2global(SE1.get('coordinates'),SE2.get('coordinates'));
-            global_connections = FemCase.global_connect(SE1.get('connections'),ncambio);
+            [global_coordinates, ncambio_in] = FemCase.nlocal2global(SE1.get('coordinates'),SE2.get('coordinates'));
+            global_connections = FemCase.global_connect(SE1.get('connections'),ncambio_in);
             mesh_fem = Mesh(global_coordinates,[SE1.get('connections');global_connections],SE1.get('material'));
-            mesh_fem.set('ncambio',ncambio);
+            mesh_fem.set('ncambio',ncambio_in);
             obj = FemCase(mesh_fem,mesh_fem.sdof(),mesh_fem.sdof());
             SE1.set('ncambio',1:SE1.nnodes())
-            SE2.set('ncambio',ncambio)
+            SE2.set('ncambio',ncambio_in)
             obj.set('SElist',SElist)
         end
         function l_index1 = l_index(bsindex,index_out)
@@ -188,12 +188,13 @@ classdef FemCase < hgsetget
         %% Stress
         function tensors(femcase)
             dis_aux = femcase.get('displacements').all_dofs;
-            StressA = zeros(femcase.nelements,8,6);
+            StressA = zeros(femcase.nelements,element.n_nodes,e ...
+                                element.n_stress_componets);
             StrainA = StressA;
             StressA_Ele = zeros(femcase.nelements,6);
-            StrainA_Ele = StressArrayEle;
+            StrainA_Ele = StressA_Ele;
             gaussn = 2;
-            [gaussp, gaussw] = lgwt(gaussn,-1,1);
+            gaussp = lgwt(gaussn,-1,1);
             for ele = 1:femcase.nelements
                 new_element = femcase.get('mesh').element_create(ele);
                 count = 1;
@@ -203,13 +204,13 @@ classdef FemCase < hgsetget
                         eta = gaussp(j);
                         for k = 1:gaussn
                             mu = gaussp(k);
-                            aux = new_element.B(xi,eta,mu)*dis_aux(new_element.ldofsid());
+                            aux = new_element.B([xi,eta,mu])*dis_aux(new_element.ldofsid());
                             C = new_element.C;
                             StrainA(ele,count,:) = aux;
                             StressA(ele,count,:) = C*aux;
                             count = count + 1;
-                            StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/8;
-                            StressArrayEle(ele,:) = StressArrayEle(ele,:) + (C*aux)'/8;
+                            StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/(2^element.dim);
+                            StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/(2^element.dim);
                         end
                     end
                 end
@@ -217,11 +218,9 @@ classdef FemCase < hgsetget
             femcase.set('StrainArray',StrainA);
             femcase.set('StressArray',StressA);
             femcase.set('StrainArrayEle',StrainA_Ele);
-            femcase.set('StressArrayEle',StressArrayEle);
+            femcase.set('StressArrayEle',StressA_Ele);
         end
         function ExtremeStress(obj,opts)
-            StressArrayEle = obj.get('StressArrayEle');
-            StrainArrayEle = obj.get('StrainArrayEle');
             coordinates = obj.get('mesh').get('coordinates');
             MaxStress = zeros(3,1);
             MaxStressInd = zeros(3,1);
@@ -229,11 +228,11 @@ classdef FemCase < hgsetget
             for i = 1:3
                 switch opts
                     case 1
-                        [val ind] = max(StressArray(:,:,i));
-                        [val ind2] = max(val);
+                        [val, ind] = max(StressArray(:,:,i));
+                        [val, ind2] = max(val);
                     case 2
-                        [val ind] = min(StressArray(:,:,i));
-                        [val ind2] = min(val);
+                        [val, ind] = min(StressArray(:,:,i));
+                        [val, ind2] = min(val);
                 end     
                 MaxStress(i) = val;
                 MaxStressInd(i) = ind(ind2);
@@ -261,9 +260,9 @@ classdef FemCase < hgsetget
             for i = 1:3
                 switch opts
                     case 1
-                        [val ind] = max(StressArrayEle(:,i));
+                        [val, ind] = max(StressArrayEle(:,i));
                     case 2
-                        [val ind] = min(StressArrayEle(:,i));
+                        [val, ind] = min(StressArrayEle(:,i));
                 end   
                 MaxStressEle(i) = val;
                 MaxStressIndEle(i) = ind;
@@ -291,19 +290,19 @@ classdef FemCase < hgsetget
         function plot(obj,elelist)
             scale = 1000;
             hold on
-            mesh = obj.get('mesh');
-            mesh = Mesh(mesh.get('element_type'),mesh.get('coordinates'), ...
-                    mesh.get('connections'),mesh.get('material'));
+            mesh_aux = obj.get('mesh');
+            mesh_aux = Mesh(mesh_aux.get('element_type'),mesh_aux.get('coordinates'), ...
+                    mesh_aux.get('connections'),mesh_aux.get('material'));
             dis = obj.get('displacements');
-            Dis = dis.xyzout();
-            mesh.plot('g');
-            bc = obj.get('bc');
-            bc = VectorField(~bc.get('nodelist'));
-            bc.plotVF(mesh.get('coordinates'),'k')
+            Dis = dis.node_function;
+            mesh_aux.plot('g');
+            bc_aux = obj.get('bc');
+            bc_aux = VectorField(~bc_aux.get('nodelist'));
+            bc_aux.plotVF(mesh_aux.get('coordinates'),'k')
             if ~isempty(dis)
-                dis.plotVF(mesh.get('coordinates'),'b')
+                dis.plotVF(mesh_aux.get('coordinates'),'b')
             end
-            obj.get('loads').plotVF(mesh.get('coordinates'),'r');
+            obj.get('loads').plotVF(mesh_aux.get('coordinates'),'r');
             hold off
         end
         

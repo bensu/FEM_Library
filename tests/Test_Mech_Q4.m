@@ -52,7 +52,7 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     %% Check
                     
                     dis = patch.get('displacements');
-                    maxval = dis.maxvalue();
+                    maxval = dis.max_dof_value();
                     tol = 1e-12;
                     sigma_theorical = q*sides(coordnum)/E;
                     test_case.verifyEqual(abs(maxval-sigma_theorical)<tol,true)

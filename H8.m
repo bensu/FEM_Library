@@ -7,9 +7,10 @@ classdef (Abstract) H8 < Element
             ele_out = ele_out@Element(n_node_dofs,n_element_dofs, ...
                                 nodes_in,material_in);
         end
-        function N_out = N(element,xi,eta,mu)
-        % N_out [1x8] = N(element,xi,eta,mu) 
+        function N_out = N(element,local_coords)
+        % N_out [1x8] = N(element,local_coords) 
         % Linear H8 Shape Functions
+            [xi, eta, mu] = element.components(local_coords);
             N_out = zeros(1,8);
             count = 1;
             for k = [-1 1]
@@ -20,12 +21,12 @@ classdef (Abstract) H8 < Element
                     end
                 end
             end
-            
             N_out = N_out/8;
         end
-        function dN_out = dN_dxi(element,xi,eta,mu)
+        function dN_out = dN_dxi(element,local_coords)
         % dN_out [1x8] = dN_dxi(element,xi,eta,mu)
         % Linear H8 Shape Functions differenciated by xi. Do not depend on xi.
+            [~, eta, mu] = element.components(local_coords);    
             dN_out = zeros(1,8);
             count = 1;
             for k = [-1 1]
@@ -38,9 +39,10 @@ classdef (Abstract) H8 < Element
             end
             dN_out = dN_out/8;    
         end
-        function dN_out = dN_deta(element,xi,eta,mu)
+        function dN_out = dN_deta(element,local_coords)
         % dN_out [1x8] = dN_deta(element,xi,eta,mu)
         % Linear H8 Shape Functions differenciated by eta. Do not depend on eta.
+            [xi, ~, mu] = element.components(local_coords);    
             dN_out = zeros(1,8);
             count = 1;
             for k = [-1 1]
@@ -53,9 +55,10 @@ classdef (Abstract) H8 < Element
             end
             dN_out = dN_out/8;    
         end
-        function dN_out = dN_dmu(element,xi,eta,mu)
+        function dN_out = dN_dmu(element,local_coords)
         % dN_out [1x8] = dN_dmu(element,xi,eta,mu)
         % Linear H8 Shape Functions differenciated by mu. Do not depend on mu.
+            [xi, eta, ~] = element.components(local_coords);   
             dN_out = zeros(1,8);
             count = 1;
             for k = [-1 1]
@@ -70,12 +73,12 @@ classdef (Abstract) H8 < Element
         end
         
         
-        function Ndev = DN(element,xi,eta,mu)
+        function Ndev = DN(element,local_coords)
             % Ndev [3x8] = DN(element,xi,eta,mu)
             % Groups all the derivatives of the shape functions in a matrix
-            Ndev = [element.dN_dxi(xi,eta,mu); 
-                   element.dN_deta(xi,eta,mu);
-                   element.dN_dmu(xi,eta,mu)];
+            Ndev = [element.dN_dxi(local_coords); 
+                   element.dN_deta(local_coords);
+                   element.dN_dmu(local_coords)];
         end
         function connected_nodes = connected_nodes(element,nodenum)
             AUX = [2 3 5; 1 4 6; 1 4 7; 2 3 8; 1 6 7; 2 5 8; 3 5 8; 4 6 7];

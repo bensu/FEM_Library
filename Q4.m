@@ -9,7 +9,7 @@ classdef Q4 < Element
         end  
         %% Shape Functions
         % should be inherited from Q4 element
-        function [shapeQ4,dNdxiQ4_out,dNdetaQ4_out] = shapefunctions(element,xi,eta)
+        function [shapeQ4,dNdxiQ4_out,dNdetaQ4_out] = shapefunctions(element,local_coords)
 
             %------------------------------------------------------------------------
             %  Purpose:
@@ -31,12 +31,13 @@ classdef Q4 < Element
             %     1st node at (-1,-1), 2nd node at (1,-1)
             %     3rd node at (1,1), 4th node at (-1,1)
             %------------------------------------------------------------------------
-            
-            shapeQ4 = element.shapeQ4(xi,neta);
+            [xi, eta] = element.components(local_coords);
+            shapeQ4 = element.shapeQ4(xi,eta);
             dNdxiQ4_out = element.dNdetaQ4(xi,eta);
             dNdetaQ4_out = element.dNdnetaQ4(xi,eta); 
         end 
-        function shapeQ4_out = N(element,xi,eta)
+        function shapeQ4_out = N(element,local_coords)
+            [xi, eta] = element.components(local_coords);
             %  Notes:
             %     1st node at (-1,-1), 3rd node at (-1,1) 
             %     4th node at (1,1), 2nd node at (1,-1)
@@ -48,7 +49,8 @@ classdef Q4 < Element
             shapeQ4_out(2) = 0.25*(1-xi)*(1+eta);
             shapeQ4_out(4) = 0.25*(1+xi)*(1+eta);
         end        
-        function dNdxiQ4_out = dN_dxi(element,xi,eta)
+        function dNdxiQ4_out = dN_dxi(element,local_coords)
+            [xi, eta] = element.components(local_coords);
             % derivatives
             require(isscalar(xi)&isscalar(eta),'Both xi and eta should be scalar')
             dNdxiQ4_out = zeros(1,4);
@@ -57,7 +59,8 @@ classdef Q4 < Element
             dNdxiQ4_out(3) = -0.25*(1+eta);
             dNdxiQ4_out(4) = 0.25*(1+eta);
         end
-        function dNdetaQ4_out = dN_deta(element,xi,eta)
+        function dNdetaQ4_out = dN_deta(element,local_coords)
+            [xi, eta] = element.components(local_coords);
             % derivatives
             require(isscalar(xi)&isscalar(eta),'Both xi and eta should be scalar')
             dNdetaQ4_out = zeros(1,4);
@@ -66,11 +69,11 @@ classdef Q4 < Element
             dNdetaQ4_out(3) = 0.25*(1-xi);
             dNdetaQ4_out(4) = 0.25*(1+xi);
         end
-        function dNdmuQ4_out = dN_dmu(element,xi,eta)
+        function dN_dmu(element,local_coords)
             error('dN_dmu should not be caled on a 2D element')
         end
-        function dN_out = DN(element,xi,eta)
-            dN_out = [element.dN_dxi;element.dN_deta];
+        function dN_out = DN(element,local_coords)
+            dN_out = [element.dN_dxi(local_coords);element.dN_deta(local_coords)];
         end
         
         function connected_nodes = connected_nodes(element,nodenum)

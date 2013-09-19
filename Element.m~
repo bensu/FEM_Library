@@ -8,7 +8,6 @@ classdef (Abstract) Element < hgsetget
     end
     properties (Dependent)
         dim
-        n_nodes
     end
     methods (Abstract)
         N_out = N(element,local_coords)
@@ -61,9 +60,9 @@ classdef (Abstract) Element < hgsetget
                 end
             end
         end
-        function coordinat = coordinates(element)
-            nodelist = element.get('nodes');
-            coordinat = zeros(numel(nodelist),element.dim);
+        function coordinat = coordinates(obj)
+            nodelist = obj.get('nodes');
+            coordinat = zeros(numel(nodelist),3);
             for i = 1:numel(nodelist)
                 nodei = nodelist(i);
                 coordinat(i,:) = nodei.get('coordinates');
@@ -93,6 +92,11 @@ classdef (Abstract) Element < hgsetget
                 ind = [ind node.ldofsid()];
             end            
         end
+        function n_out = n_nodes(element)
+            % n_out = n_nodes(element)
+            % Number of nodes in the element
+            n_out = length(element.get('nodes'));
+        end
 
         %% Setters and Getters
         
@@ -112,9 +116,6 @@ classdef (Abstract) Element < hgsetget
         function dim_out = get.dim(element)
             node_list = element.get('nodes');
             dim_out = length(node_list(1).get('coordinates'));
-        end
-        function dim_out = get.n_nodes(element)
-            dim_out = length(element.get('nodes'));
         end
     end
  

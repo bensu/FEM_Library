@@ -57,7 +57,7 @@ classdef Loads < Compound_Function
                             localcoords(facecoord(i)) = facevalue(i);
                             xi = localcoords(1); eta = localcoords(2); mu = localcoords(3);
                             
-                            jac =  new_element.jacobian(xi,eta,mu);
+                            jac =  new_element.jacobian([xi,eta,mu]);
                             index = 1:3;
                             index = index(index~=facecoord(i));
                             jacremainder = jac(index,1:3);
@@ -65,7 +65,7 @@ classdef Loads < Compound_Function
                             V2 = jacremainder(2,:);
                             dS = norm(cross(V1,V2));
                             weight = gaussw(k1)*gaussw(k2)*gaussw(k3);
-                            NewLoads(nodes',:) = NewLoads(nodes',:) + weight*new_element.N(xi,eta,mu)'*qvector*dS;
+                            NewLoads(nodes',:) = NewLoads(nodes',:) + weight*new_element.N([xi,eta,mu])'*qvector*dS;
                         end
                     end
                 end
