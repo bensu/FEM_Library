@@ -14,7 +14,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     c = 3; p = dim;
                     
                     E = 2;                                % Youngs modulus
-                    nu = 0;                               % Poisson's ratio
+                    nu = 0.3;                               % Poisson's ratio
                     rho = 7840;                           % Density
                     sides = [a,b,c];
                     mesh = Mesh.meshgen('Mech_H8',sides,[m n p],E,nu,rho);
@@ -31,11 +31,11 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     bc.simply_supported_face(face,coordnum,mesh);
                     
                     %% LOADS
-                    q = 2;
+                    sigma = 2;
                     coordload = coordnum;
                     valueload = sides(coordload);
                     vector = zeros(3,1);
-                    vector(coordload) = q;
+                    vector(coordload) = sigma;
                     face = Face.new_face(mesh,coordload,valueload);
                     loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
                             mesh.nnel, mesh.get('n_element_dofs'));
@@ -44,7 +44,7 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     %% CASE
                     patch = FemCase(mesh,bc,loads);
                     patch.solve();
-                    patch.getMaxStressEle()
+                    patch.getMaxStressEle();
                     SA = patch.get('StressArrayEle');
                     %subplot(3,1,coordnum)
                     if plot_on
@@ -53,11 +53,9 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
                     
                     %% Check
                     
-                    dis = patch.get('displacements');
-                    maxval = dis.max_dof_value();
+                    max_stress = max(max(SA));
                     tol = 1e-12;
-                    sigma_theorical = q*sides(coordnum)/E;
-                    test_case.verifyEqual(abs(maxval-sigma_theorical)<tol,true)
+                    test_case.verifyEqual(abs(max_stress-sigma)<tol,true)
                     
                 end
             end 

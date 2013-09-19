@@ -56,7 +56,7 @@ classdef Face < hgsetget
                 facecoord = aux;
         end
         
-        function [elelist facecoord facevalue] = faceinelement(obj)
+        function [elelist, facecoord, facevalue] = faceinelement(obj)
             parent1 = obj.get('parent');
             connections = parent1.get('connections');
             nface = obj.get('nodelist');
@@ -91,7 +91,7 @@ classdef Face < hgsetget
                     normalnodes(j) = find(foundnodes(j) == allnodes);
                 end
 
-                [facevalue_aux facecoord_aux] = normalnodes2valcoord(obj,normalnodes);
+                [facevalue_aux, facecoord_aux] = normalnodes2valcoord(obj,normalnodes);
                 facevalue(i) = facevalue_aux;
                 facecoord(i) = facecoord_aux;
 

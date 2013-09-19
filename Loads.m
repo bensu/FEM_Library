@@ -12,7 +12,7 @@ classdef Loads < Compound_Function
        
         function qinface(loads,mesh,face,qvector)
             qvector = reshape(qvector,1,[]);
-            [elelist, facecoord, facevalue] = face.faceinelement()
+            [elelist, facecoord, facevalue] = face.faceinelement();
             NewLoads = zeros(loads.number_of_nodes,loads.dofs_per_node);
             localcoords = zeros(1,3);
             for i = 1:length(elelist)

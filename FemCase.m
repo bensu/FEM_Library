@@ -201,6 +201,7 @@ classdef FemCase < hgsetget
             gaussp = lgwt(gaussn,-1,1);
             for ele = 1:femcase.nelements
                 element = femcase.get('mesh').element_create(ele);
+                C = element.C;
                 count = 1;
                 for i = 1:gaussn
                     xi = gaussp(i);
@@ -211,7 +212,6 @@ classdef FemCase < hgsetget
                                 mu = gaussp(k);
                                 aux = element.B([xi,eta,mu])* ...
                                             dis_aux(element.ldofsid());
-                                C = element.C;
                                 StrainA(ele,count,:) = aux;
                                 StressA(ele,count,:) = C*aux;
                                 count = count + 1;
@@ -220,7 +220,6 @@ classdef FemCase < hgsetget
                             end
                         elseif element.dim == 2
                             aux = element.B([xi,eta])*dis_aux(element.ldofsid());
-                            C = element.C;
                             StrainA(ele,count,:) = aux;
                             StressA(ele,count,:) = C*aux;
                             count = count + 1;

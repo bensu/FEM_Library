@@ -2,15 +2,16 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
   
     methods (Test)
         function patch_test(test_case)
-            for dim = 1:2
-                for coordnum = 1:2
+            for dim = 2
+                for coordnum = 2
                     plot_on = false;
                     %% Mesh & Material
-                    n_dim = 2;  % 2D
-                    % Cubes dimension a,b,c
-                    % Number of elements in each cube edge.
+
+                    % Plate dimension a,b,thickness
+                    % Number of elements in each edge.
                     a = 2; m = dim;
                     b = 1; n = dim;
+                    thickness = 1;
                     
                     E = 2;                                % Youngs modulus
                     nu = 0;                               % Poisson's ratio
@@ -30,16 +31,21 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     
                     
                     %% LOADS
-                    q = 2;
-                    coordload = coordnum;
-                    valueload = sides(coordload);
-                    vector = zeros(2,1);
-                    vector(coordload) = q;
-                    face = Face.new_face(mesh,coordload,valueload);
+                    
+                    
+                    
                     loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
                             mesh.nnel, mesh.get('n_element_dofs'));
-                    loads.qinface(mesh,face,vector);
-                    loads.node_function
+%                     loads.qinface(mesh,face,vector);
+%                     loads.node_function
+
+%                   %% NOT GENERALIZED FOR D
+                    sigma = 2;
+                    F = sigma*thickness*sides(mod(coordnum,2)+1)/4;
+                    q1 = zeros(2,1); q1(coordnum) = F;                    
+                    loads.get('node_component').edit_component_by_id(7,q1);
+                    loads.get('node_component').edit_component_by_id(8,2*q1);
+                    loads.get('node_component').edit_component_by_id(9,q1)
                                     
                     %% CASE
                     patch = FemCase(mesh,bc,loads);
@@ -54,10 +60,10 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     %% Check
                     
                     dis = patch.get('displacements');
-                    maxval = dis.max_dof_value();
+                    dis.node_function
+                    max_stress = max(max(SA));
                     tol = 1e-12;
-                    sigma_theorical = q*sides(coordnum)/E;
-                    test_case.verifyEqual(abs(maxval-sigma_theorical)<tol,true)
+                    test_case.verifyEqual(abs(max_stress-sigma)<tol,true)
                     
                 end
             end 
