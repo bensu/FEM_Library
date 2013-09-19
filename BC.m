@@ -47,15 +47,16 @@ classdef BC < Compound_Function
             dim = size(coords,2);
             switch size(coords,2)
                 case 2
-                    orthogonal_coord = mod(coordnum,2)+1;
+%                     orthogonal_coord = mod(coordnum,2)+1;
                 case 3
                     v1 = zeros(1,dim);
                     v1(coordnum) = 1;
                     v2 = coords(facelist(1),:) - coords(facelist(2),:);
                     orthogonal_coord = find(cross(v1,v2));
+                    bc.support_node_by_id(facelist(2),orthogonal_coord); 
             end
                                 
-            bc.support_node_by_id(facelist(2),orthogonal_coord);          
+                     
         end  
         function plot(obj,coordinates,color)
             hold on

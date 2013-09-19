@@ -28,6 +28,7 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                             mesh.nnel, mesh.get('n_element_dofs'));
                     bc.simply_supported_face(face,coordnum,mesh);
                     
+                    
                     %% LOADS
                     q = 2;
                     coordload = coordnum;
@@ -37,12 +38,13 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     face = Face.new_face(mesh,coordload,valueload);
                     loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
                             mesh.nnel, mesh.get('n_element_dofs'));
-                    loads.qinface(mesh,face,vector);                                      
+                    loads.qinface(mesh,face,vector);
+                    loads.node_function
                                     
                     %% CASE
                     patch = FemCase(mesh,bc,loads);
                     patch.solve();
-                    patch.getMaxStressEle()
+                    patch.getMaxStressEle();
                     SA = patch.get('StressArrayEle');
                     %subplot(3,1,coordnum)
                     if plot_on

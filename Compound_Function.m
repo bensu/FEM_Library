@@ -3,6 +3,10 @@ classdef Compound_Function < hgsetget
         element_component
         node_component
     end
+    properties (Dependent)
+        node_function
+        element_function
+    end
     methods
         function obj = Compound_Function(filler,total_number_of_nodes_in,dofs_per_node_in, ...
                             total_number_of_elements_in, dofs_per_element_in)
@@ -26,10 +30,10 @@ classdef Compound_Function < hgsetget
             compound.get('element_component').dof_list_in(element_dofs);
         end
         
-        function fun_out = node_function(compound)
+        function fun_out = get.node_function(compound)
             fun_out = compound.get('node_component').get('component_function');
         end
-        function fun_out = element_function(compound)
+        function fun_out = get.element_function(compound)
             fun_out = compound.get('element_component').get('component_function');
         end
         

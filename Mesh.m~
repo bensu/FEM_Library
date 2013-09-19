@@ -308,13 +308,12 @@ classdef Mesh < hgsetget
                 %% Plot
         
         function plot_function(mesh,vf,dim,type,color)
-            % plot(vf,dim,type,color)
-            % dim: Which dimensions of the Vector functio to Plot
-            %      If it is a displacement, U = [u,v,w], u can be plotted by
-            %      specifying dim = 1.
-            % type: patch for 1 dimension
-            %       quiver for 2 or 3 dimensions 
-            hold on
+        % plot(vf,dim,type,color)
+        % dim: Which dimensions of the Vector functio to Plot
+        %      If it is a displacement, U = [u,v,w], u can be plotted by
+        %      specifying dim = 1.
+        % type: patch for 1 dimension
+        %       quiver for 2 or 3 dimensions 
             coords = mesh.get('coordinates');
             if mesh.dim == 2
                 coords = [coords zeros(size(coords,1),1)];
@@ -323,18 +322,13 @@ classdef Mesh < hgsetget
                 case 'quiver'
                     require(any(vf.dofs_per_node == [2,3]), ...
                                     'Wrong Dimension for Quiver');
-                    u = vf.node_function(:,1); v = vf.node_function(:,2);
-                    if mesh.dim == 3
-                        w = vf.node_function(:,3);
-                    elseif mesh.dim == 2
-                        w = zeros(size(u));
-                    end          
-                    quiver3(coords(:,1),coords(:,2),coords(:,3), ...
-                                            u,v,w,'color',color)
+                                
+                    quiver3(x,y,z,u,v,w)
+                    quiver3(coords(:,1),coords(:,2),coords(:,3),vf.node_function(:,1),vf.node_function(:,2),vf.node_function(:,3))
                 case 'patch'
                     require(length(dim)==1 && vf.dofs_per_component==1)
                     
-            end     
+            end        
         end
     end
 end
