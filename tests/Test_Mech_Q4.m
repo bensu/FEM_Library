@@ -59,15 +59,13 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     
                     %% Check
                     
-                    dis = patch.get('displacements');
-                    dis.node_function
                     max_stress = max(max(SA));
                     tol = 1e-12;
                     test_case.verifyEqual(abs(max_stress-sigma)<tol,true)
-                    
+                    patch.plot([])
                 end
             end 
-            patch.plot([])
+            
         end
     end
 end

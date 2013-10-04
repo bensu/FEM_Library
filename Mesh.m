@@ -12,95 +12,13 @@ classdef Mesh < hgsetget
         n_element_dofs      % Dofs that belong only to the element, not the nodes
     end
     
-    methods (Static)
-        function L = NXorder()
-            L = [6 2 5 1 7 3 8 4];
-        end
-        function sca = tometer()
-            sca = 1e3;
-        end
-        function obj = mesh_import(coordstr,connectstr,mate)
-            connections_in = load(connectstr);
-            connections_in = connections_in(:,2:end);
-            coordinates_in = load(coordstr);
-            connections2 = zeros(size(connections_in));
-            for i = 1:size(coordinates_in,1)
-                nodenum = coordinates_in(i,1);
-                connections2(connections_in==nodenum) = i;
-            end
-            connections_in = connections2;
-            coordinates_in = coordinates_in(:,2:4);
-            l = Mesh.NXorder();
-            aux = zeros(size(connections_in));
-            for i = 1:length(l)
-                aux(:,i) = connections_in(:,l(i));
-            end
-            connections_in = aux;
-            coordinates_in = coordinates_in/1e4;
-            coordinates_in = coordinates_in/Mesh.tometer();
-            obj = Mesh(coordinates_in,connections_in,mate);
-        end
-        function obj = mesh_import2(coordstr,connectstr,mate)
-            connections_in = load(connectstr);
-            coordinates_in = load(coordstr);
-            connections2 = zeros(size(connections_in));
-            for i = 1:size(coordinates_in,1)
-                nodenum = coordinates_in(i,1);
-                connections2(connections_in==nodenum) = i;
-            end
-            
-            coordinates_in = coordinates_in/1e4;
-            coordinates_in = coordinates_in/Mesh.tometer();
-            obj = Mesh(coordinates_in,connections_in,mate);
-        end
-        function mesh2D = meshgen2D(type,A,M,E,nu,rho)
-            % mesh2D = meshgen2D(A,M,E,nu,rho)
-            % Generates a 2D rectangular mesh
-            [coords_aux, connect_aux] = Mesh.rectangle_mesh([A 1],[M 1]);
-            nnodes = size(coords_aux,1);
-            material_in = Material(1,'Iso',E,nu,rho);
-            mesh2D = Mesh(type,coords_aux(1:nnodes/2,1:2), ...
-                            connect_aux(:,1:4),material_in);            
-        end
-        function mesh3D = meshgen(type,A,M,E,nu,rho)
-            % mesh3D = meshgen(A,M,E,nu,rho)
-            % Generates a 3D rectangular mesh
-            [coordinates_in, connections_in] = Mesh.rectangle_mesh(A,M);
-            mat1 = Material(1,'Iso',E,nu,rho);
-            mesh3D = Mesh(type,coordinates_in,connections_in,mat1);
-        end
-        function [coordinates_out, connections_out] = rectangle_mesh(A,M)
-            a = A(1);b = A(2); c = A(3);
-            m = M(1);n = M(2); p = M(3);
-            x = a/m;y = b/n;z = c/p;
-            coordinates_out = zeros((n+1)*(m+1)*(p+1),3);
-            connections_out = zeros(n*m*p,8);
-            count = 1;
-            for k = 1:p+1
-                for j = 1:n+1
-                    for i = 1:m+1
-                        coordinates_out(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
-                        count = count + 1;
-                    end
-                end
-            end
-            count = 1;
-            for k = 1:p
-                for j = 1:n
-                    for i = 1:m
-                        connections_out(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_out(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_out(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_out(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
-                        connections_out(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections_out(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
-                        connections_out(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
-                        connections_out(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
-                        count = count + 1;
-                    end
-                end
-            end
-        end
+    properties (Dependent)
+        nnodes
+        nnel
+        ndofspernode
+        ndofs
+        nodesperelement
+        dim        
     end
     
     methods
@@ -254,7 +172,7 @@ classdef Mesh < hgsetget
         end
         function stiffness = stiff(obj)
                 nnel = obj.nnel();
-                stiffness = sparse(obj.sdof(),obj.sdof());
+                stiffness = sparse(obj.ndofs(),obj.ndofs());
                 gaussn = 2;
                 for ele = 1:nnel
                     element = obj.element_create(ele);
@@ -262,27 +180,6 @@ classdef Mesh < hgsetget
                     ind = element.ldofsid();
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;
                 end
-        end
-
-
-        %% Property Methods
-        function out = nnodes(obj)          %total number of nodes
-            out = size(get(obj,'coordinates'),1);
-        end
-        function out = nnel(obj)            %total number of elements
-            out = size(get(obj,'connections'),1);
-        end
-        function out = ndofspernode(obj)    %number of dofs per node
-            out = size(get(obj,'coordinates'),2);
-        end
-        function out = sdof(obj)            %total system dofs
-            out = obj.nnodes()*obj.ndofspernode();
-        end
-        function out = nodesperelement(obj) %nodes per element
-            out = size(get(obj,'connections'),2);
-        end
-        function out = dim(obj)    %number of dofs per node
-            out = size(get(obj,'coordinates'),2);
         end
         
         
@@ -335,6 +232,117 @@ classdef Mesh < hgsetget
                     require(length(dim)==1 && vf.dofs_per_component==1)
                     
             end     
+        end
+        
+        %% Property Methods
+        function out = get.nnodes(obj)          %total number of nodes
+            out = size(get(obj,'coordinates'),1);
+        end
+        function out = get.nnel(obj)            %total number of elements
+            out = size(get(obj,'connections'),1);
+        end
+        function out = get.ndofspernode(obj)    %number of dofs per node
+            out = size(get(obj,'coordinates'),2);
+        end
+        function out = get.ndofs(obj)            %total system dofs
+            out = obj.nnodes()*obj.ndofspernode();
+        end
+        function out = get.nodesperelement(obj) %nodes per element
+            out = size(get(obj,'connections'),2);
+        end
+        function out = get.dim(obj)    %number of dofs per node
+            out = size(get(obj,'coordinates'),2);
+        end
+    end  
+    
+     methods (Static)
+        function L = NXorder()
+            L = [6 2 5 1 7 3 8 4];
+        end
+        function sca = tometer()
+            sca = 1e3;
+        end
+        function obj = mesh_import(coordstr,connectstr,mate)
+            connections_in = load(connectstr);
+            connections_in = connections_in(:,2:end);
+            coordinates_in = load(coordstr);
+            connections2 = zeros(size(connections_in));
+            for i = 1:size(coordinates_in,1)
+                nodenum = coordinates_in(i,1);
+                connections2(connections_in==nodenum) = i;
+            end
+            connections_in = connections2;
+            coordinates_in = coordinates_in(:,2:4);
+            l = Mesh.NXorder();
+            aux = zeros(size(connections_in));
+            for i = 1:length(l)
+                aux(:,i) = connections_in(:,l(i));
+            end
+            connections_in = aux;
+            coordinates_in = coordinates_in/1e4;
+            coordinates_in = coordinates_in/Mesh.tometer();
+            obj = Mesh(coordinates_in,connections_in,mate);
+        end
+        function obj = mesh_import2(coordstr,connectstr,mate)
+            connections_in = load(connectstr);
+            coordinates_in = load(coordstr);
+            connections2 = zeros(size(connections_in));
+            for i = 1:size(coordinates_in,1)
+                nodenum = coordinates_in(i,1);
+                connections2(connections_in==nodenum) = i;
+            end
+            
+            coordinates_in = coordinates_in/1e4;
+            coordinates_in = coordinates_in/Mesh.tometer();
+            obj = Mesh(coordinates_in,connections_in,mate);
+        end
+        function mesh2D = meshgen2D(type,A,M,E,nu,rho)
+            % mesh2D = meshgen2D(A,M,E,nu,rho)
+            % Generates a 2D rectangular mesh
+            [coords_aux, connect_aux] = Mesh.rectangle_mesh([A 1],[M 1]);
+            nnodes = size(coords_aux,1);
+            material_in = Material(1,'Iso',E,nu,rho);
+            mesh2D = Mesh(type,coords_aux(1:nnodes/2,1:2), ...
+                            connect_aux(:,1:4),material_in);            
+        end
+        function mesh3D = meshgen(type,A,M,E,nu,rho)
+            % mesh3D = meshgen(A,M,E,nu,rho)
+            % Generates a 3D rectangular mesh
+            [coordinates_in, connections_in] = Mesh.rectangle_mesh(A,M);
+            mat1 = Material(1,'Iso',E,nu,rho);
+            mesh3D = Mesh(type,coordinates_in,connections_in,mat1);
+        end
+        function [coordinates_out, connections_out] = rectangle_mesh(A,M)
+            a = A(1);b = A(2); c = A(3);
+            m = M(1);n = M(2); p = M(3);
+            x = a/m;y = b/n;z = c/p;
+            coordinates_out = zeros((n+1)*(m+1)*(p+1),3);
+            connections_out = zeros(n*m*p,8);
+            count = 1;
+            for k = 1:p+1
+                for j = 1:n+1
+                    for i = 1:m+1
+                        coordinates_out(count,:) = [(i-1)*x,(j-1)*y,(k-1)*z];
+                        count = count + 1;
+                    end
+                end
+            end
+            count = 1;
+            for k = 1:p
+                for j = 1:n
+                    for i = 1:m
+                        connections_out(count,1) = 1+(i-1)+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,2) = 1+i+(j-1)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,3) = i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,4) = 1+i+(j)*(m+1)+(k-1)*(m+1)*(n+1);
+                        connections_out(count,5) = 1+(i-1)+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,6) = 1+i+(j-1)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,7) = i+(j)*(m+1)+k*(m+1)*(n+1);
+                        connections_out(count,8) = 1+i+(j)*(m+1)+k*(m+1)*(n+1);
+                        count = count + 1;
+                    end
+                end
+            end
         end
     end
 end

@@ -7,6 +7,8 @@ classdef FemCase < hgsetget
         displacements
         reactions
         ncambio
+        
+        %% UN ASCO
         StressArray
         StrainArray
         StressArrayEle 
@@ -23,8 +25,15 @@ classdef FemCase < hgsetget
         MinStressEle
         MinStressIndEle
         MinStressPointEle
+        %% 
     end
     properties (Dependent)
+        n_node_dofs
+        n_element_dofs
+        nnodes
+        nnel
+        nodesperelement
+        n_stress_components
         dim
     end
     
@@ -65,7 +74,7 @@ classdef FemCase < hgsetget
             global_connections = FemCase.global_connect(SE1.get('connections'),ncambio_in);
             mesh_fem = Mesh(global_coordinates,[SE1.get('connections');global_connections],SE1.get('material'));
             mesh_fem.set('ncambio',ncambio_in);
-            obj = FemCase(mesh_fem,mesh_fem.sdof(),mesh_fem.sdof());
+            obj = FemCase(mesh_fem,mesh_fem.ndofs(),mesh_fem.ndofs());
             SE1.set('ncambio',1:SE1.nnodes())
             SE2.set('ncambio',ncambio_in)
             obj.set('SElist',SElist)
@@ -89,21 +98,21 @@ classdef FemCase < hgsetget
                 BC_in = bc_in;
             elseif isempty(bc_in)
                 BC_in = BC(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nelements, femcase.n_element_dofs);
+                            femcase.nnel, femcase.n_element_dofs);
             end
             femcase.set('bc',BC_in);
             if isa(loads_in,'Loads')
                 Loads_in = loads_in;
             elseif isempty(bc_in)
                 Loads_in = Loads(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nelements, femcase.n_elemens_dofs);
+                            femcase.nnel, femcase.n_elemens_dofs);
             end
             femcase.set('loads',Loads_in);
             Displacements_in = Displacements(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nelements, femcase.n_element_dofs);
+                            femcase.nnel, femcase.n_element_dofs);
             femcase.set('displacements',Displacements_in);
             Reactions_in = Displacements(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nelements, femcase.n_element_dofs);
+                            femcase.nnel, femcase.n_element_dofs);
             femcase.set('reactions',Reactions_in);
         end
         %% Solve
@@ -135,9 +144,9 @@ classdef FemCase < hgsetget
             l_index1 = SE1.nodesindex(nodos_cond1); %grados de libertd de esos indeces chicos.
             l_index2 = SE2.nodesindex(nodos_cond2);
             
-            condensed_sdof = length(bsindex);
+            condensed_ndofs = length(bsindex);
             
-            SmallStiff = sparse(condensed_sdof,condensed_sdof);
+            SmallStiff = sparse(condensed_ndofs,condensed_ndofs);
             
             SmallStiff(l_index1,l_index1) = SmallStiff(l_index1,l_index1) + K_condensed;
             SmallStiff(l_index2,l_index2) = SmallStiff(l_index2,l_index2) + K_condensed;
@@ -149,12 +158,12 @@ classdef FemCase < hgsetget
             condensed_loadsv = obj.get('loads').get('nodelist');
             condensed_loadsv = condensed_loadsv(bsindex);
             
-            condensed_dis = sparse(condensed_sdof,1);
+            condensed_dis = sparse(condensed_ndofs,1);
             condensed_dis(condensed_free) = SmallStiff(condensed_free,condensed_free) \ condensed_loadsv(condensed_free);
             condensed_reactions = SmallStiff*condensed_dis;
             
-            sdof = obj.get('mesh').sdof();
-            displacements = zeros(sdof,1);
+            ndofs = obj.get('mesh').ndofs();
+            displacements = zeros(ndofs,1);
             displacements(index_out) = condensed_dis(l_index1); %desplazamientos de caras del 1er elemento
             displacements(index_in) = -(Kcc\Kcr)*displacements(index_out);%desplazamientos interiores del 1er elemento
             displacements(index_out2) = condensed_dis(l_index2); %desplazamientos de caras del 2do elemento
@@ -170,7 +179,7 @@ classdef FemCase < hgsetget
         function solve(femcase)
             meshnow = femcase.get('mesh');
             stiffness = meshnow.stiff();
-            D = zeros(meshnow.sdof(),1);
+            D = zeros(meshnow.ndofs(),1);
             free = femcase.get('bc').all_dofs;
             loadsv = femcase.get('loads').all_dofs;
             D(free) = stiffness(free,free)\loadsv(free);
@@ -191,15 +200,15 @@ classdef FemCase < hgsetget
         %% Stress
         function tensors(femcase)
             dis_aux = femcase.get('displacements').all_dofs;
-            StressA = zeros(femcase.nelements,femcase.n_ele_nodes, ...
+            StressA = zeros(femcase.nnel,femcase.nodesperelement, ...
                                 femcase.n_stress_components);
             StrainA = StressA;
-            StressA_Ele = zeros(femcase.nelements, ...
+            StressA_Ele = zeros(femcase.nnel, ...
                                 femcase.n_stress_components);
             StrainA_Ele = StressA_Ele;
             gaussn = 2;
             gaussp = lgwt(gaussn,-1,1);
-            for ele = 1:femcase.nelements
+            for ele = 1:femcase.nnel
                 element = femcase.get('mesh').element_create(ele);
                 C = element.C;
                 count = 1;
@@ -311,30 +320,32 @@ classdef FemCase < hgsetget
             hold off
         end
         
-        %% Helpers
+        %% Setters & Getters
         
-        function n = n_node_dofs(femcase)
+        function n = get.n_node_dofs(femcase)
             n = femcase.get('mesh').get('n_node_dofs');
         end
-        function n = n_element_dofs(femcase)
+        function n = get.n_element_dofs(femcase)
             n = femcase.get('mesh').get('n_element_dofs');
         end
-        function n = nnodes(femcase)
+        function n = get.nnodes(femcase)
             n = femcase.get('mesh').nnodes;
         end
-        function n = nelements(femcase)
+        function n = get.nnel(femcase)
             n = femcase.get('mesh').nnel;
         end
-        function n = n_ele_nodes(femcase)
+        function n = get.nodesperelement(femcase)
             n = femcase.get('mesh').nodesperelement;
         end
-        function n = n_stress_components(femcase)
+        function n = get.n_stress_components(femcase)
             n = femcase.get('mesh').element_create(1).n_stress_components;
         end
         function n = get.dim(femcase)
             n = femcase.get('mesh').element_create(1).dim;
         end
     end
+    
+
     
     
 end
