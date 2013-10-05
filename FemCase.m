@@ -8,24 +8,7 @@ classdef FemCase < hgsetget
         reactions
         ncambio
         
-        %% UN ASCO
         node_stress_array
-        StrainArray
-        StressArrayEle 
-        StrainArrayEle
-        MaxStress
-        MaxStressInd
-        MaxStressPoint
-        MinStress
-        MinStressInd
-        MinStressPoint
-        MaxStressEle
-        MaxStressIndEle
-        MaxStressPointEle
-        MinStressEle
-        MinStressIndEle
-        MinStressPointEle
-        %% 
     end
     properties (Dependent)
         nnodes
@@ -225,114 +208,6 @@ classdef FemCase < hgsetget
                 femcase.node_stress_array = stress_out;
             else femcase.node_stress_array;
             end
-        end
-        function tensors(femcase)
-            dis_aux = femcase.get('displacements').all_dofs;
-            StressA = zeros(femcase.nnel,femcase.nodes_per_ele, ...
-                                femcase.n_stress_components);
-            StrainA = StressA;
-            StressA_Ele = zeros(femcase.nnel, ...
-                                femcase.n_stress_components);
-            StrainA_Ele = StressA_Ele;
-            gaussn = 2;
-            gaussp = lgwt(gaussn,-1,1);
-            for ele = 1:femcase.nnel
-                element = femcase.get('mesh').create_ele(ele);
-                C = element.C;
-                count = 1;
-                for i = 1:gaussn
-                    xi = gaussp(i);
-                    for j = 1:gaussn
-                        eta = gaussp(j);
-                        if element.dim == 3
-                            for k = 1:gaussn
-                                mu = gaussp(k);
-                                aux = element.B([xi,eta,mu])* ...
-                                            dis_aux(element.ldofsid());
-                                StrainA(ele,count,:) = aux;
-                                StressA(ele,count,:) = C*aux;
-                                count = count + 1;
-                                StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/(2^element.dim);
-                                StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/(2^element.dim);
-                            end
-                        elseif element.dim == 2
-                            aux = element.B([xi,eta])*dis_aux(element.ldofsid());
-                            StrainA(ele,count,:) = aux;
-                            StressA(ele,count,:) = C*aux;
-                            count = count + 1;
-                            StrainA_Ele(ele,:) = StrainA_Ele(ele,:) + aux'/(2^element.dim);
-                            StressA_Ele(ele,:) = StressA_Ele(ele,:) + (C*aux)'/(2^element.dim);
-                        end
-                    end
-                end
-            end
-            femcase.set('StrainArray',StrainA);
-            femcase.set('StressArray',StressA);
-            femcase.set('StrainArrayEle',StrainA_Ele);
-            femcase.set('StressArrayEle',StressA_Ele);
-        end
-        function ExtremeStress(obj,opts)
-            coordinates = obj.get('mesh').get('coordinates');
-            MaxStress = zeros(3,1);
-            MaxStressInd = zeros(3,1);
-            MaxStressPoint = zeros(3,3);
-            for i = 1:3
-                switch opts
-                    case 1
-                        [val, ind] = max(StressArray(:,:,i));
-                        [val, ind2] = max(val);
-                    case 2
-                        [val, ind] = min(StressArray(:,:,i));
-                        [val, ind2] = min(val);
-                end     
-                MaxStress(i) = val;
-                MaxStressInd(i) = ind(ind2);
-                MaxStressPoint(i,:) = coordinates(connections(MaxStressInd(i),1),:); %Devuelve la coordenada del nodo uno de ese elemento
-            end
-            switch opts
-                case 1
-                    obj.set('MaxStress',MaxStress)
-                    obj.set('MaxStressInd',MaxStressInd)
-                    obj.set('MaxStressPoint',MaxStressPoint)
-                case 2
-                    obj.set('MinStress',MaxStressEle)
-                    obj.set('MinStressInd',MaxStressInd)
-                    obj.set('MinStressPoint',MaxStressPoint)
-            end
-        end
-        function ExtremeStressElement(femcase,opts)
-            StressAE = femcase.get('StressArrayEle');
-            coordinates = femcase.get('mesh').get('coordinates');
-            connections = femcase.get('mesh').get('connections');
-            MaxStressE = zeros(femcase.dim,1);
-            MaxStressIndE = zeros(femcase.dim,1);
-            MaxStressPointE = zeros(femcase.dim);
-            for i = 1:3
-                switch opts
-                    case 1
-                        [val, ind] = max(StressAE(:,i));
-                    case 2
-                        [val, ind] = min(StressAE(:,i));
-                end   
-                MaxStressE(i) = val;
-                MaxStressIndE(i) = ind;
-                MaxStressPointE(i,:) = coordinates(connections(ind,1),:); %Devuelve la coordenada del nodo uno de ese elemento
-            end
-            switch opts
-                case 1
-                    femcase.set('MaxStressEle',MaxStressE)
-                    femcase.set('MaxStressIndEle',MaxStressIndE)
-                    femcase.set('MaxStressPointEle',MaxStressPointE)
-                case 2
-                    femcase.set('MinStressEle',MaxStressE)
-                    femcase.set('MinStressIndEle',MaxStressIndE)
-                    femcase.set('MinStressPointEle',MaxStressPointE)
-            end
-        end
-        
-        function getMaxStressEle(obj)
-            obj.tensors();
-            obj.ExtremeStressElement(1)
         end
             
         %% Plot
