@@ -1,15 +1,18 @@
 classdef (Abstract) Element < hgsetget
     properties
+        id
         nodes
         material
         parent
-        n_element_dofs
-        n_node_dofs
+        dofs_per_ele
+        dofs_per_node
+        dof_dis             % Solutions in dof form
     end
     properties (Abstract, Constant)
-        nnodes
-        node_connectivity
-        face_connectivity
+        nnodes              % Number of nodes in the element
+        node_connectivity   % Rows contain pairs of connected nodes
+        face_connectivity   % Nodes of each face forming a closed polygon
+        node_local_coords   % Local coordinates of each node for the N(xi,eta,mu)
     end
     properties (Dependent)
         dim
@@ -17,6 +20,13 @@ classdef (Abstract) Element < hgsetget
         node_id_list
         n_nodes_per_face
         n_faces
+        n_node_dofs
+        n_ele_dofs
+        dof_list
+        node_dof_list
+        ele_dof_list
+        n_dofs              % Total number of dofs in the element
+        last_node_dof       % Mesh's last node dof
     end
     methods (Abstract)
         N_out = N(element,local_coords)
@@ -27,12 +37,13 @@ classdef (Abstract) Element < hgsetget
     end
         
     methods
-        function obj = Element(n_node_dofs_in,n_element_dofs_in,nodes, ...
+        function obj = Element(id_in,dofs_per_node_in,dofs_per_ele_in,nodes, ...
                                         material)
+            set(obj,'id',id_in);
             set(obj,'nodes',nodes);
             set(obj,'material',material);
-            set(obj,'n_node_dofs',n_node_dofs_in);
-            set(obj,'n_element_dofs',n_element_dofs_in);
+            set(obj,'dofs_per_node',dofs_per_node_in);
+            set(obj,'dofs_per_ele',dofs_per_ele_in);
         end
 
         function facecoord = elementface(obj,coordnum,value)
@@ -159,6 +170,32 @@ classdef (Abstract) Element < hgsetget
                 ind = [ind node.ldofsid()];
             end            
         end
+        
+        %% DOFS
+        
+        function dof_list = get.dof_list(element)
+            % dof_list = dof_list(mesh,ele_num)
+            % Returns a dof_list [nodes_per_element*n_dof_per_node +
+            % n_dofs_per_element, 1] for the element number ele_num
+            % Element DOFs are always after the node dofs.
+            dof_list = [element.node_dof_list; element.ele_dof_list];
+        end
+        function dof_list = get.node_dof_list(element)
+            % dof_list = node_dof_list(mesh,ele_num)
+            % Returns a list with all the element - node_dofs
+            dof_list = zeros(element.nnodes*element.dofs_per_node,1);
+            for n = 1:element.nnodes;
+                node = element.node_id_list(n);
+                dof_list(index_range(element.dofs_per_node,n)) =  ...
+                                        index_range(element.dofs_per_node,node);
+            end
+        end
+        function dof_list = get.ele_dof_list(element)
+            % dof_list = dof_list(mesh,ele_num)
+            % Returns a list with all the element - element_dofs
+            dof_list = index_range(element.n_ele_dofs,element.get('id')) + ...
+                                    element.last_node_dof;
+        end
 
         %% Setters and Getters
         
@@ -196,15 +233,35 @@ classdef (Abstract) Element < hgsetget
         function nnodes = get.n_faces(element)
             nnodes = size(element.get('face_connectivity'),1);
         end
+        function dofs_n = get.n_node_dofs(element)
+            dofs_n = element.nnodes*element.dofs_per_node;
+        end
+        function dofs_n = get.n_ele_dofs(element)
+            dofs_n = element.nnodes*element.dofs_per_ele;
+        end
+        function dofs_n = get.n_dofs(element)
+            dofs_n = element.n_ele_dofs + element.n_node_dofs;
+        end
+        function dof_n = get.last_node_dof(element)    % Last dof belonging to a node
+            dof_n = element.dofs_per_node*element.nnodes;
+        end
+        
+        function set.id(element,id_in)
+            require(isscalar(id_in) && mod(id_in,1)==0,'Wrong element Id');
+            element.id = id_in;
+        end
         function set.nodes(element,nodes_in)
             require(length(nodes_in)==element.nnodes,'Wrong amount of Nodes');
             require(isa(nodes_in(1),'Node'),'Node List doesn''t contain nodes');
             element.nodes = nodes_in;
         end
-        
         function set.material(element,material_in)
             require(isa(material_in,'Material'),'Wrong Input Type for Material');
             element.material = material_in;
+        end
+        function set.dof_dis(element,dis_in)
+        	require(length(dis_in)==element.n_dofs,'Wrong Displacement Size');
+            element.dof_dis = dis_in;
         end
     end
  

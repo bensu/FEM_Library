@@ -9,7 +9,7 @@ classdef FemCase < hgsetget
         ncambio
         
         %% UN ASCO
-        StressArray
+        node_stress_array
         StrainArray
         StressArrayEle 
         StrainArrayEle
@@ -28,11 +28,13 @@ classdef FemCase < hgsetget
         %% 
     end
     properties (Dependent)
-        n_node_dofs
-        n_element_dofs
         nnodes
         nnel
-        nodesperelement
+        nodes_per_ele
+        dofs_per_node
+        dofs_per_ele
+        n_node_dofs
+        n_ele_dofs
         n_stress_components
         dim
     end
@@ -97,22 +99,22 @@ classdef FemCase < hgsetget
             if isa(bc_in,'BC')
                 BC_in = bc_in;
             elseif isempty(bc_in)
-                BC_in = BC(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nnel, femcase.n_element_dofs);
+                BC_in = BC(femcase.nnodes,femcase.dofs_per_node, ...
+                            femcase.nnel, femcase.dofs_per_ele);
             end
             femcase.set('bc',BC_in);
             if isa(loads_in,'Loads')
                 Loads_in = loads_in;
             elseif isempty(bc_in)
-                Loads_in = Loads(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nnel, femcase.n_elemens_dofs);
+                Loads_in = Loads(femcase.nnodes,femcase.dofs_per_node, ...
+                            femcase.nnel, femcase.dofs_per_ele);
             end
             femcase.set('loads',Loads_in);
-            Displacements_in = Displacements(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nnel, femcase.n_element_dofs);
+            Displacements_in = Displacements(femcase.nnodes, ...
+                femcase.dofs_per_node, femcase.nnel, femcase.dofs_per_ele);
             femcase.set('displacements',Displacements_in);
-            Reactions_in = Displacements(femcase.nnodes,femcase.n_node_dofs, ...
-                            femcase.nnel, femcase.n_element_dofs);
+            Reactions_in = Displacements(femcase.nnodes,femcase.dofs_per_node, ...
+                            femcase.nnel, femcase.dofs_per_ele);
             femcase.set('reactions',Reactions_in);
         end
         %% Solve
@@ -198,9 +200,35 @@ classdef FemCase < hgsetget
             end
         end
         %% Stress
+        function stress_out = get.node_stress_array(femcase)
+        % stress_out = get.node_stress_array(femcase)
+        % Computes the stress at each node by element, and then averages
+        % the values for stress_out array [nnodes x n_stress_components]
+            if isempty(femcase.node_stress_array)
+                dis = femcase.get('displacements').all_dofs;
+                node_stress = cell(femcase.nnodes,1);
+                for ele = 1:femcase.nnel
+                    element = femcase.get('mesh').create_ele(ele,dis);
+                    ele_stress = element.node_stress;
+                    for n = 1:femcase.nodes_per_ele
+                        node = element.node_id_list(n);
+                        node_stress{node} = [node_stress{node}; ele_stress(n,:)];
+                    end
+                end
+                stress_out = zeros(femcase.nnodes,size(node_stress{1},2));
+                for node = 1:femcase.nnodes
+                    if size(node_stress{node},1) == 1
+                        stress_out(node,:) = node_stress{node};
+                    else stress_out(node,:) = mean(node_stress{node});
+                    end
+                end
+                femcase.node_stress_array = stress_out;
+            else femcase.node_stress_array;
+            end
+        end
         function tensors(femcase)
             dis_aux = femcase.get('displacements').all_dofs;
-            StressA = zeros(femcase.nnel,femcase.nodesperelement, ...
+            StressA = zeros(femcase.nnel,femcase.nodes_per_ele, ...
                                 femcase.n_stress_components);
             StrainA = StressA;
             StressA_Ele = zeros(femcase.nnel, ...
@@ -209,7 +237,7 @@ classdef FemCase < hgsetget
             gaussn = 2;
             gaussp = lgwt(gaussn,-1,1);
             for ele = 1:femcase.nnel
-                element = femcase.get('mesh').element_create(ele);
+                element = femcase.get('mesh').create_ele(ele);
                 C = element.C;
                 count = 1;
                 for i = 1:gaussn
@@ -309,39 +337,43 @@ classdef FemCase < hgsetget
             
         %% Plot
         
-        function plot(obj,elelist)
+        function plot_displacement(femcase,coord)
             scale = 1000;
             hold on
-            mesh_aux = obj.get('mesh');
-            mesh_aux.plot('g');
-            mesh_aux.plot_function(obj.get('displacements'),[],'quiver','b')
-            mesh_aux.plot_function(obj.get('loads'),[],'quiver','r')
-            mesh_aux.plot_function(obj.get('bc'),[],'quiver','k')
+            mesh_aux = femcase.get('mesh');
+            node_func = femcase.get('displacements').node_function;
+            mesh_aux.plot_node_function(node_func(:,coord))
             hold off
         end
         
         %% Setters & Getters
-        
-        function n = get.n_node_dofs(femcase)
-            n = femcase.get('mesh').get('n_node_dofs');
-        end
-        function n = get.n_element_dofs(femcase)
-            n = femcase.get('mesh').get('n_element_dofs');
-        end
         function n = get.nnodes(femcase)
             n = femcase.get('mesh').nnodes;
         end
         function n = get.nnel(femcase)
             n = femcase.get('mesh').nnel;
         end
-        function n = get.nodesperelement(femcase)
-            n = femcase.get('mesh').nodesperelement;
+        function n = get.nodes_per_ele(femcase)
+            n = femcase.get('mesh').nodes_per_ele;
         end
+        function n = get.dofs_per_node(femcase)
+            n = femcase.get('mesh').dofs_per_node;
+        end
+        function n = get.dofs_per_ele(femcase)
+            n = femcase.get('mesh').dofs_per_ele;
+        end
+        function n = get.n_node_dofs(femcase)
+            n = femcase.get('mesh').n_node_dofs;
+        end
+        function n = get.n_ele_dofs(femcase)
+            n = femcase.get('mesh').n_ele_dofs;
+        end
+
         function n = get.n_stress_components(femcase)
-            n = femcase.get('mesh').element_create(1).n_stress_components;
+            n = femcase.get('mesh').create_ele(1).n_stress_components;
         end
         function n = get.dim(femcase)
-            n = femcase.get('mesh').element_create(1).dim;
+            n = femcase.get('mesh').create_ele(1).dim;
         end
     end
     

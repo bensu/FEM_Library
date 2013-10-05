@@ -4,7 +4,7 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
         function patch_test(test_case)
             for dim = 2
                 for coordnum = 2
-                    plot_on = false;
+                    plot_on = true;
                     %% Mesh & Material
 
                     % Plate dimension a,b,thickness
@@ -20,13 +20,13 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     mesh = Mesh.meshgen2D('Mech_Q4',sides,[m n],E,nu,rho);
                     % Break Mesh Symmetry
                     delta = 0.1;
-                    mesh.randominner(delta);    % Moves an inner node by delta
+                    mesh.random_inner(delta);    % Moves an inner node by delta
                     
                     %% BC
                     valuebc = 0;
                     face = Face.new_face(mesh,coordnum,valuebc);
-                    bc = BC(mesh.nnodes,mesh.get('n_node_dofs'), ...
-                            mesh.nnel, mesh.get('n_element_dofs'));
+                    bc = BC(mesh.nnodes,mesh.get('dofs_per_node'), ...
+                            mesh.nnel, mesh.get('dofs_per_ele'));
                     bc.simply_supported_face(face,coordnum,mesh);
                     
                     
@@ -34,8 +34,8 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     
                     
                     
-                    loads = Loads(mesh.nnodes,mesh.get('n_node_dofs'), ...
-                            mesh.nnel, mesh.get('n_element_dofs'));
+                    loads = Loads(mesh.nnodes,mesh.get('dofs_per_node'), ...
+                            mesh.nnel, mesh.get('dofs_per_ele'));
 %                     loads.qinface(mesh,face,vector);
 %                     loads.node_function
 
@@ -50,19 +50,18 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
                     %% CASE
                     patch = FemCase(mesh,bc,loads);
                     patch.solve();
-                    patch.getMaxStressEle();
-                    SA = patch.get('StressArrayEle');
+                    stress_array = patch.node_stress_array;
                     %subplot(3,1,coordnum)
                     if plot_on
-                        patch.plot()
+                        figure
+                        patch.plot_displacement(coordnum)
                     end
                     
                     %% Check
                     
-                    max_stress = max(max(SA));
+                    max_stress = max(max(stress_array));
                     tol = 1e-12;
                     test_case.verifyEqual(abs(max_stress-sigma)<tol,true)
-                    patch.plot([])
                 end
             end 
             

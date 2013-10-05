@@ -3,12 +3,13 @@ classdef (Abstract) H8 < Element
         nnodes = 8;
         node_connectivity = [1 2;1 3;1 5;2 4;2 6;3 4;3 7;4 8;5 6;5 7;6 8;7 8];
         face_connectivity = [1 2 4 3;1 2 6 5;1 3 7 5;8 6 5 7;8 4 3 7;8 4 2 6];
+        node_local_coords = [-1 -1 -1;-1 1 -1;1 -1 -1;1 1 -1;-1 -1 1;-1 1 1;1 -1 1;1 1 1];
     end
     methods
-        function ele_out = H8(n_node_dofs,n_element_dofs,nodes_in,material_in)
+        function ele_out = H8(id_in,n_node_dofs,n_element_dofs,nodes_in,material_in)
             require(length(nodes_in(1).get('coordinates'))==3, ...
                 'Mesh should be 3D');
-            ele_out = ele_out@Element(n_node_dofs,n_element_dofs, ...
+            ele_out = ele_out@Element(id_in,n_node_dofs,n_element_dofs, ...
                                 nodes_in,material_in);
         end
         function N_out = N(element,local_coords)

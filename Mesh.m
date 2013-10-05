@@ -4,24 +4,27 @@ classdef Mesh < hgsetget
         coordinates
         connections
         material
+        dofs_per_node
+        dofs_per_ele
         outer_face
         polygons            % Array(:,:,1:3) = [X;Y;Z] for patch. Stored for Speed
         parent
         ncambio
-        n_node_dofs         % Dofs per node
-        n_element_dofs      % Dofs that belong only to the element, not the nodes
     end
     
     properties (Dependent)
         nnodes
         nnel
-        ndofspernode
-        ndofs
-        nodesperelement
+        nodes_per_ele
+        n_node_dofs         % Total dofs belonging to nodes
+        n_ele_dofs          % Total dofs belonging to element but not nodes
+        ndofs               % Total number of dofs in the mesh
         coords
         connect
         dim
         outer_nodes
+        inner_nodes
+        last_node_dof
     end
     
     methods
@@ -31,9 +34,9 @@ classdef Mesh < hgsetget
             set(mesh,'connections',connections);
             set(mesh,'material',material);
             set(mesh,'element_type',type);
-            ele = mesh.element_create(1);
-            set(mesh,'n_node_dofs',ele.get('n_node_dofs'));       % Dofs per node
-            set(mesh,'n_element_dofs',ele.get('n_element_dofs'));  
+            ele = mesh.create_ele(1);
+            set(mesh,'dofs_per_node',ele.get('dofs_per_node'));       % Dofs per node
+            set(mesh,'dofs_per_ele',ele.get('dofs_per_ele'));  
         end
 
         %% Coordinates Methods
@@ -63,23 +66,7 @@ classdef Mesh < hgsetget
             mesh.set('outer_face',[mesh.get('outer_faces');newface])
         end
 
-        function facenodelist = facenodelist(mesh,face)
-            % SHOULD THIS BE HERE
-            facenodelist = face.get('nodelist');
-        end 
         %% Node Methods
-        function innodes = innernodes(mesh)
-            outface = mesh.outface();
-            outnodelist = mesh.facenodelist(outface);
-            innodes = [];
-            count = 1;
-            for i = 1:mesh.nnodes()
-                if ~any(outnodelist==i)
-                    innodes(count) = i;
-                    count = count + 1;
-                end
-            end
-        end
         function nodesin = nodes_in(mesh)
             nodesin = 1:size(mesh.get('coordinates'),1);      
             nodesin(mesh.get('nodesout')) = [];   
@@ -91,7 +78,7 @@ classdef Mesh < hgsetget
             nodesout = reshape(ncambio_aux(mesh.get('nodesout')),1,[]);      
         end 
         function ind = nodesindex(mesh,nodelist)
-            ndofpernode = mesh.ndofspernode();
+            ndofpernode = mesh.dofs_per_node();
             ind = zeros(length(nodelist),1);
             for i = 1:length(nodelist)
                 range = (ndofpernode*(i-1)+1):(ndofpernode*i);
@@ -108,14 +95,14 @@ classdef Mesh < hgsetget
                 end
             end
         end
-        function randominner(mesh,delta)
+        function random_inner(mesh,delta)
             % randominner(mesh,delta)
             % !!! state altering.
             % Changes the position of a random inner node by delta
-            innodes = mesh.innernodes();
+            innodes = mesh.inner_nodes;
             if ~isempty(innodes)
                 coord = mesh.get('coordinates');
-                coord(innodes(1),1) = mesh.coords(innodes(1),1) + delta;
+                coord(innodes(1),1) = coord(innodes(1),1) + delta;
                 mesh.set('coordinates',coord);
             end
         end
@@ -131,32 +118,67 @@ classdef Mesh < hgsetget
                 end
             end
         end
-        
+        %% Element
         function elementcoord_out = elementcoord(mesh,ele)
             % elementcoord_out = elementcoord(mesh,ele)
             % Find the center of gravity of the element and return it as 
             % a coordinate
             % SHOULD BE IN ELEMENTS
-            new_ele = mesh.elementcreate(ele);
+            new_ele = mesh.create_ele(ele);
             elementcoord_out = median(new_ele.coordinates());
         end
         
+        function dof_list = ele_dof_list(mesh,ele_num)
+            % dof_list = ele_dof_list(mesh,ele_num)
+            % Returns a dof_list [nodes_per_element*n_dof_per_node +
+            % n_dofs_per_element, 1] for the element number ele_num
+            % Element DOFs are always after the node dofs.
+            dof_list = [mesh.ele_node_dof_list(ele_num); mesh.ele_ele_dof_list];
+        end
+        function dof_list = ele_node_dof_list(mesh,ele_num)
+            % dof_list = ele_node_dof_list(mesh,ele_num)
+            % Returns a list with all the element - node_dofs
+            element = mesh.create_ele(ele_num);
+            dof_list = zeros(element.nnodes*element.n_node_dofs,1);
+            for n = element.nnodes;
+                node = element.node_id_list(n);
+                dof_list(index_range(element.n_node_dofs,n)) =  ...
+                                        index_range(element.n_node_dofs,node);
+            end
+        end
+        function dof_list = ele_ele_dof_list(mesh,ele_num)
+            % dof_list = ele_dof_list(mesh,ele_num)
+            % Returns a list with all the element - element_dofs
+            dof_list = index_range(mesh.n_ele_dofs,ele_num) + ...
+                                    mesh.last_node_dof;
+        end
         %% Assembly Methods
-        function element = element_create(mesh,ele)
-            % CREATES THE APPROPIATE ELEMENT FROM ID: ele
+        function element = create_ele(mesh,ele_num,varargin)
+            % element = create_ele(mesh,ele_num)
+            % element = create_ele(mesh,ele_num,displacements)
+            % CREATES THE APPROPIATE ELEMENT FROM ID: ele_num
+            % If the displacements where found, then dis_in is stored
             connect = mesh.get('connections');
-            coordinat = mesh.get('coordinates');
-            for i = 1:mesh.nodesperelement()
-                nodos(i) = Node(connect(ele,i),coordinat(connect(ele,i),:),mesh);
+            coords = mesh.get('coordinates');
+            for i = 1:mesh.nodes_per_ele;
+                nodos(i) = Node(connect(ele_num,i),coords(connect(ele_num,i),:),mesh);
             end
             % BIG PROBLEM HERE -> How to initialize by element type?
             switch mesh.element_type
                 case 'Mech_H8'
-                    element = Mech_H8(nodos,mesh.get('material'));   % HARDCODED
+                    element = Mech_H8(ele_num,nodos,mesh.get('material'));   % HARDCODED
                 case 'Mech_Q4'
-                    element = Mech_Q4(nodos,mesh.get('material'));
+                    element = Mech_Q4(ele_num,nodos,mesh.get('material'));
                 otherwise
                     error(strcat('Element Type: ',mesh.element_type,' not found'));
+            end
+            if ~isempty(varargin)
+                dis_aux = varargin{1};
+                if length(dis_aux) == mesh.ndofs
+                    dis_in = dis_aux(element.dof_list);
+                else dis_in = dis_aux;
+                end
+                element.set('dof_dis',dis_in);
             end
         end
         function stiffness = stiff(mesh)
@@ -164,7 +186,7 @@ classdef Mesh < hgsetget
                 stiffness = sparse(mesh.ndofs(),mesh.ndofs());
                 gaussn = 2;
                 for ele = 1:nnel
-                    element = mesh.element_create(ele);
+                    element = mesh.create_ele(ele);
                     kele = element.K(gaussn);
                     ind = element.ldofsid();
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;
@@ -214,7 +236,7 @@ classdef Mesh < hgsetget
             out_nodes = mesh.outer_nodes;
             poly_out = [];
             for ele = 1:mesh.nnel   % Loop every element
-                ele_instance = mesh.element_create(ele);
+                ele_instance = mesh.create_ele(ele);
                 % Get the outer faces of the element
                 faces = ele_instance.global_faces_from_nodes_id(out_nodes)';
                 for f = 1:size(faces,2) % Loop through the surfaces
@@ -240,7 +262,7 @@ classdef Mesh < hgsetget
                     for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
                         elelist = mesh.elementsofnode(nodenum);
                         % Finds the elements the node belongs too
-                        element = mesh.element_create(elelist(1));
+                        element = mesh.create_ele(elelist(1));
                         if length(elelist) < element.n_nodes    % If
                             nodelist = [nodelist nodenum];
                             %                     for i = 1:length(elelist)
@@ -258,7 +280,7 @@ classdef Mesh < hgsetget
                     %             big_elelist = unique(big_elelist);
                     out_face = Face(nodelist,mesh);
                     mesh.set('outer_face',out_face);
-                    %             outfaces.set('par_plot',par_plot);
+                    %             outer_faces.set('par_plot',par_plot);
                 end
             else out_face = mesh.outer_face;
             end
@@ -277,7 +299,22 @@ classdef Mesh < hgsetget
             else poly_out = mesh.polygons;
             end
         end
+        
+
         %% Property Methods
+        function in_nodes = get.inner_nodes(mesh)
+            % in_nodes = get.inner_nodes(mesh)
+            % Finds a list of inner node by comparing to the outer nodes
+            % Computationally expensive, maybe stored for efficiency (???)
+            in_nodes = [];
+            count = 1;
+            for n = 1:mesh.nnodes()
+                if ~any(mesh.outer_nodes == n)
+                    in_nodes(count) = n;
+                    count = count + 1;
+                end
+            end
+        end
         function out_nodes = get.outer_nodes(mesh)
             out_nodes = mesh.get('outer_face').get('node_list');
         end
@@ -287,14 +324,17 @@ classdef Mesh < hgsetget
         function out = get.nnel(mesh)            %total number of elements
             out = size(mesh.connect,1);
         end
-        function out = get.ndofspernode(mesh)    %number of dofs per node
-            out = size(mesh.coords,2);
+        function out = get.nodes_per_ele(mesh)
+            out = size(mesh.connect,2);
+        end
+        function out = get.n_node_dofs(mesh)    %number of dofs per node
+            out = mesh.get('dofs_per_node')*mesh.nnodes;
+        end
+        function out = get.n_ele_dofs(mesh)    %number of dofs per node
+            out = mesh.get('dofs_per_ele')*mesh.nnel;
         end
         function out = get.ndofs(mesh)            %total system dofs
-            out = mesh.nnodes()*mesh.ndofspernode();
-        end
-        function out = get.nodesperelement(mesh) %nodes per element
-            out = size(mesh.connect,2);
+            out = mesh.nnodes()*mesh.dofs_per_node();
         end
         function out = get.dim(mesh)    %number of dofs per node
             out = size(mesh.coords,2);
@@ -304,6 +344,9 @@ classdef Mesh < hgsetget
         end
         function coords_out = get.connect(mesh)
             coords_out = mesh.get('connections');
+        end
+        function dof_n = get.last_node_dof(mesh)    % Last dof belonging to a node
+            dof_n = mesh.n_node_dofs*mesh.nnodes;
         end
     end  
     

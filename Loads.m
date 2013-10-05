@@ -16,8 +16,8 @@ classdef Loads < Compound_Function
             NewLoads = zeros(loads.number_of_nodes,loads.dofs_per_node);
             localcoords = zeros(1,3);
             for i = 1:length(elelist)
-                new_element = mesh.element_create(elelist(i));
-                nodes = new_element.nodeidlist();
+                new_element = mesh.create_ele(elelist(i));
+                nodes = new_element.node_id_list();
                 gaussn = 2;
                 [gaussp, gaussw] = lgwt(gaussn,-1,1);
                 for k1 = 1:gaussn

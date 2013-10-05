@@ -44,6 +44,8 @@ classdef (Abstract) Mechanics < Physics
             strain_voight = zeros(element.nnodes,element.n_stress_components);
             for n = 1:element.nnodes
                 l_coords = element.node_local_coords(n,:);
+                size(element.B(l_coords))
+                size(element.mech_dis)
                 strain_voight(n,:) = (element.B(l_coords)*element.mech_dis)';
             end
         end
@@ -126,15 +128,16 @@ classdef (Abstract) Mechanics < Physics
         %% Setters & Getters
         
         function dis_out = get.mech_dis(element)
-            aux = element.get('dof_dis');
+            aux = element.get('dof_dis')
+            element.mech_dofs_id
             dis_out = aux(element.mech_dofs_id);
         end
         function dof_list = get.mech_dofs_id(element)
             ind = [];
             for n = 1:element.nnodes
-                ind = [ind; index_range(element.dofs_per_node,n,element.mech_node_dofs_id)];
-            end
-            dof_list = [ind; element.n_node_dofs + element.mech_ele_dofs_id];
+                ind = [ind; index_range(element.n_node_dofs,n,element.mech
+            dof_list = [element.mech_node_dofs_id; 
+                        element.n_node_dofs + element.mech_ele_dofs_id];
         end
         function H_out = get.dU_to_strain(element)
             AUX = zeros(6,9);

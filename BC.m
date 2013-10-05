@@ -31,14 +31,14 @@ classdef BC < Compound_Function
             obj.set('nodelist',VectorField.xyzin(previous));
         end
         function face_constraint(obj,face,coordnum,mesh)
-            nodelistids = mesh.facenodelist(face);
+            nodelistids = face.node_list;
             for i = 1:length(nodelistids)
                 obj.support_node_by_id(nodelistids(i),coordnum);
             end
         end
         function simply_supported_face(bc,face,coordnum,mesh) %missing a point
             coords = mesh.get('coordinates');
-            facelist = mesh.facenodelist(face);
+            facelist = face.node_list;
             %first fixed point
             bc.fix_node_by_id(facelist(1));
             %face

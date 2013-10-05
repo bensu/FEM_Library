@@ -3,12 +3,15 @@ classdef Face < hgsetget
     %each element face is described by it's element id, and the plane
     %coordnum == value
     properties 
-        node_list
+        nodes
         parent
-        elementlist
+        elements
         coordnumlist
         valuelist
         par_plot
+    end
+    properties (Dependent)
+        node_list
     end
     methods (Static)
         function newface = new_face(parent,coordnum,value)
@@ -33,7 +36,7 @@ classdef Face < hgsetget
             if ~strcmp('Mesh',class(parent))
                 error('wrong type for parent')
             end
-            set(face,'node_list',node_list);
+            set(face,'nodes',node_list);
             set(face,'parent',parent);
         end
         
@@ -96,9 +99,15 @@ classdef Face < hgsetget
 
             end
             
-            face.set('elementlist',elelist);
+            face.set('elements',elelist);
             face.set('coordnumlist',facecoord);
             face.set('valuelist',facevalue);
         end  
+        
+        %% Setters & Getters
+        
+        function nodes = get.node_list(face)
+            nodes = reshape(face.get('nodes'),[],1);
+        end
     end
 end

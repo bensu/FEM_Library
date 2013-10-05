@@ -3,12 +3,13 @@ classdef Q4 < Element
         nnodes = 4;
         node_connectivity = [1 2;1 3;2 4;3 4];
         face_connectivity = [1 2 4 3];
+        node_local_coords = [-1 -1;-1 1;1 -1;1 1];
     end
     methods 
-        function ele_out = Q4(n_node_dofs,n_element_dofs,nodes_in,material_in)
+        function ele_out = Q4(id_in,n_node_dofs,n_element_dofs,nodes_in,material_in)
             require(length(nodes_in(1).get('coordinates'))==2, ...
                 'Mesh should be 2D');
-            ele_out = ele_out@Element(n_node_dofs,n_element_dofs, ...
+            ele_out = ele_out@Element(id_in,n_node_dofs,n_element_dofs, ...
                                 nodes_in,material_in);
         end  
         %% Shape Functions

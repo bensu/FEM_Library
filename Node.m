@@ -13,10 +13,10 @@ classdef Node < hgsetget
         function dofsid = ldofsid(obj)
             %returns the list with it's dof 
             mesh = obj.get('parent');
-            ndofpernode = mesh.ndofspernode();
+            ndofs = mesh.get('dofs_per_node');
             nodeids = obj.get('id');
-            dofsid = (1+ndofpernode*(nodeids-1):ndofpernode*nodeids);
-            if length(dofsid)~=ndofpernode
+            dofsid = (1+ndofs*(nodeids-1):ndofs*nodeids);
+            if length(dofsid)~=ndofs
                 error('DEBUG NODE.GDOFSID')
             end
         end
