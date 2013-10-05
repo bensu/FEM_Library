@@ -4,8 +4,8 @@ classdef Mesh < hgsetget
         coordinates
         connections
         material
-        outer_faces
-        nodesout
+        outer_face
+        polygons            % Array(:,:,1:3) = [X;Y;Z] for patch. Stored for Speed
         parent
         ncambio
         n_node_dofs         % Dofs per node
@@ -18,143 +18,132 @@ classdef Mesh < hgsetget
         ndofspernode
         ndofs
         nodesperelement
-        dim        
+        coords
+        connect
+        dim
+        outer_nodes
     end
     
     methods
 
-        function obj = Mesh(type,coordinates,connections,material)
-            set(obj,'coordinates',coordinates);
-            set(obj,'connections',connections);
-            set(obj,'material',material);
-            set(obj,'element_type',type);
-            ele = obj.element_create(1);
-            set(obj,'n_node_dofs',ele.get('n_node_dofs'));       % Dofs per node
-            set(obj,'n_element_dofs',ele.get('n_element_dofs'));  
+        function mesh = Mesh(type,coordinates,connections,material)
+            set(mesh,'coordinates',coordinates);
+            set(mesh,'connections',connections);
+            set(mesh,'material',material);
+            set(mesh,'element_type',type);
+            ele = mesh.element_create(1);
+            set(mesh,'n_node_dofs',ele.get('n_node_dofs'));       % Dofs per node
+            set(mesh,'n_element_dofs',ele.get('n_element_dofs'));  
         end
 
         %% Coordinates Methods
         
-        function value = mincoordval(obj,coordnum)
-            coordinatesl = obj.get('coordinates');
+        function value = mincoordval(mesh,coordnum)
+            coordinatesl = mesh.get('coordinates');
             [~, ind] = min(abs(coordinatesl(:,coordnum)));
             value = coordinatesl(ind,coordnum);
         end
-        function value = maxcoordval(obj,coordnum)
-            coordinatesl = obj.get('coordinates');
+        function value = maxcoordval(mesh,coordnum)
+            coordinatesl = mesh.get('coordinates');
             [~, ind] = max(abs(coordinatesl(:,coordnum)));
             value = coordinatesl(ind,coordnum);
         end
-        function shift(obj,dis_vector)
-            coords = obj.get('coordinates');
+        function shift(mesh,dis_vector)
+            coords = mesh.get('coordinates');
             coords2 = zeros(size(coords));
-            for n = 1:obj.nnodes()
+            for n = 1:mesh.nnodes()
                 coords2(n,:) = coords(n,:) + dis_vector;
             end
-            obj.set('coordinates',coords2)
+            mesh.set('coordinates',coords2)
         end
         
         %% Face Methods
         
-        function add_outer_face(obj,newface)
-            obj.set('outer_faces',[obj.get('outer_faces');newface])
+        function add_outer_face(mesh,newface)
+            mesh.set('outer_face',[mesh.get('outer_faces');newface])
         end
-        function outfaces = outface(mesh)
-            % outfaces = outface(mesh)
-            % Finds the outer nodes and returns an out face object
-            connect = mesh.get('connections');
-            nodelist = [];
-            par_plot = [];
-            for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
-                elelist = mesh.elementsofnode(nodenum);
-                % Finds the elements the node belongs too
-                element = mesh.element_create(elelist(1));
-                if length(elelist) < element.n_nodes    % If
-                    nodelist = [nodelist nodenum];
-                    for i = 1:length(elelist)
-                    	allnodes = connect(elelist(i),:);  %should be [n_nodesx1]
-                        other_nodes = allnodes(element.connected_nodes(nodenum == allnodes));
-                        for j = 1:length(other_nodes)
-                            if any(other_nodes(j)==nodelist)
-                                par_plot = [par_plot; nodenum other_nodes(j)];
-                            end
-                        end
-                    end
-                end
-            end
-%             big_elelist = unique(big_elelist);
-            outfaces = Face(nodelist,mesh);
-            outfaces.set('par_plot',par_plot);
-        end
+
         function facenodelist = facenodelist(mesh,face)
+            % SHOULD THIS BE HERE
             facenodelist = face.get('nodelist');
         end 
         %% Node Methods
-        function innodes = innernodes(obj)
-            outface = obj.outface();
-            outnodelist = obj.facenodelist(outface);
+        function innodes = innernodes(mesh)
+            outface = mesh.outface();
+            outnodelist = mesh.facenodelist(outface);
             innodes = [];
             count = 1;
-            for i = 1:obj.nnodes()
+            for i = 1:mesh.nnodes()
                 if ~any(outnodelist==i)
                     innodes(count) = i;
                     count = count + 1;
                 end
             end
         end
-        function nodesin = nodes_in(obj)
-            nodesin = 1:size(obj.get('coordinates'),1);      
-            nodesin(obj.get('nodesout')) = [];   
-            ncambio_aux = obj.get('ncambio');
+        function nodesin = nodes_in(mesh)
+            nodesin = 1:size(mesh.get('coordinates'),1);      
+            nodesin(mesh.get('nodesout')) = [];   
+            ncambio_aux = mesh.get('ncambio');
             nodesout = reshape(ncambio_aux(nodesin),1,[]); % WHAT IS HERE?
         end
-        function nodesout = nodes_out(obj)
-            ncambio_aux = obj.get('ncambio');
-            nodesout = reshape(ncambio_aux(obj.get('nodesout')),1,[]);      
+        function nodesout = nodes_out(mesh)
+            ncambio_aux = mesh.get('ncambio');
+            nodesout = reshape(ncambio_aux(mesh.get('nodesout')),1,[]);      
         end 
-        function ind = nodesindex(obj,nodelist)
-            ndofpernode = obj.ndofspernode();
+        function ind = nodesindex(mesh,nodelist)
+            ndofpernode = mesh.ndofspernode();
             ind = zeros(length(nodelist),1);
             for i = 1:length(nodelist)
                 range = (ndofpernode*(i-1)+1):(ndofpernode*i);
                 ind(range) = (ndofpernode*(nodelist(i)-1)+1):(ndofpernode*nodelist(i));
             end
         end
-        function elementlist = elementsofnode(obj,nodenum)
-            connections1  = obj.get('connections');
-            elementlist = [];
-            for i = 1:size(connections1,1)
-                if any(nodenum==connections1(i,:))
-                    elementlist = [elementlist i];
+        function ele_list = elementsofnode(mesh,node_in)
+            % elementlist = elementsofnode(mesh,nodenum)
+            % Returns a list of element numbers that contain node_in
+            ele_list = [];
+            for ele = 1:mesh.nnel
+                if any(node_in == mesh.connect(ele,:))
+                    ele_list = [ele_list ele];
                 end
             end
         end
-        function randominner(obj,delta)
-            innodes = obj.innernodes();
+        function randominner(mesh,delta)
+            % randominner(mesh,delta)
+            % !!! state altering.
+            % Changes the position of a random inner node by delta
+            innodes = mesh.innernodes();
             if ~isempty(innodes)
-                coord = obj.get('coordinates');
-                coord(innodes(1),1) = coord(innodes(1),1) + delta;
-                obj.set('coordinates',coord);
+                coord = mesh.get('coordinates');
+                coord(innodes(1),1) = mesh.coords(innodes(1),1) + delta;
+                mesh.set('coordinates',coord);
             end
         end
-        function nodenum = findnode(obj,x0)
+        function nodenum = findnode(mesh,x0)
+            % nodenum = findnode(mesh,x0)
+            % Finds a node close to x0 according to a tolerance.
+            require(length(x0)==mesh,dim,'Wrong coordinates size');
             nodenum = [];
-            coordinates_aux = obj.get('coordinates');
             tol = 5e-3;
-            for i = 1:obj.nnodes()
-                if norm(coordinates_aux(i,:)-x0)<tol;
-                    nodenum = i;
+            for n = 1:mesh.nnodes()
+                if norm(mesh.coords(n,:)-x0)<tol;
+                    nodenum = n;
                 end
             end
         end
         
-        function elementcoord_out = elementcoord(obj,ele)
-            new_ele = obj.elementcreate(ele);
+        function elementcoord_out = elementcoord(mesh,ele)
+            % elementcoord_out = elementcoord(mesh,ele)
+            % Find the center of gravity of the element and return it as 
+            % a coordinate
+            % SHOULD BE IN ELEMENTS
+            new_ele = mesh.elementcreate(ele);
             elementcoord_out = median(new_ele.coordinates());
         end
         
         %% Assembly Methods
         function element = element_create(mesh,ele)
+            % CREATES THE APPROPIATE ELEMENT FROM ID: ele
             connect = mesh.get('connections');
             coordinat = mesh.get('coordinates');
             for i = 1:mesh.nodesperelement()
@@ -170,12 +159,12 @@ classdef Mesh < hgsetget
                     error(strcat('Element Type: ',mesh.element_type,' not found'));
             end
         end
-        function stiffness = stiff(obj)
-                nnel = obj.nnel();
-                stiffness = sparse(obj.ndofs(),obj.ndofs());
+        function stiffness = stiff(mesh)
+                nnel = mesh.nnel();
+                stiffness = sparse(mesh.ndofs(),mesh.ndofs());
                 gaussn = 2;
                 for ele = 1:nnel
-                    element = obj.element_create(ele);
+                    element = mesh.element_create(ele);
                     kele = element.K(gaussn);
                     ind = element.ldofsid();
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;
@@ -185,73 +174,136 @@ classdef Mesh < hgsetget
         
         %% Plot
         
+        function [X,Y,Z] = out_polygons(mesh)
+            % poly = out_polygons(mesh)
+            % Returns a list of polygons for the MATLAB patch function
+            poly_aux = mesh.get('polygons');
+            X = poly_aux(:,:,1); Y = poly_aux(:,:,2); 
+            if mesh.dim == 2
+                Z = zeros(size(X));
+            else Z = poly_aux(:,:,3);
+            end
+        end
+        
         function plot(mesh,colour)
             hold on
-            npoints = 2;
-            outfaces = mesh.outface();
-            coordinates_aux = mesh.get('coordinates');
-            par_plot_now = outfaces.get('par_plot');
-            X = zeros(npoints,3);
-            for i = 1:size(par_plot_now,1)
-                for j = 1:mesh.dim
-                    X(:,j) = linspace(coordinates_aux(par_plot_now(i,1),j), ...
-                               coordinates_aux(par_plot_now(i,2),j),npoints)';
-                end
-                plot3(X(:,1),X(:,2),X(:,3),colour);
-            end
+            [X,Y,Z] = mesh.out_polygons;
+            patch(X,Y,Z,colour)
             hold off
         end
         
-                %% Plot
-        
-        function plot_function(mesh,vf,dim,type,color)
-            % plot(vf,dim,type,color)
-            % dim: Which dimensions of the Vector functio to Plot
-            %      If it is a displacement, U = [u,v,w], u can be plotted by
-            %      specifying dim = 1.
-            % type: patch for 1 dimension
-            %       quiver for 2 or 3 dimensions 
+        function plot_node_function(mesh,node_list)
+            % plot_node_function(mesh,node_list)
+            % Takes a list of values associated to nodes and plots them on
+            % the mesh
+            require(numel(node_list) == mesh.nnodes,'Wrong Size node_list')
+            node_list = reshape(node_list,[],1);
             hold on
-            coords = mesh.get('coordinates');
-            if mesh.dim == 2
-                coords = [coords zeros(size(coords,1),1)];
-            end
-            switch type
-                case 'quiver'
-                    require(any(vf.dofs_per_node == [2,3]), ...
-                                    'Wrong Dimension for Quiver');
-                    u = vf.node_function(:,1); v = vf.node_function(:,2);
-                    if mesh.dim == 3
-                        w = vf.node_function(:,3);
-                    elseif mesh.dim == 2
-                        w = zeros(size(u));
-                    end          
-                    quiver3(coords(:,1),coords(:,2),coords(:,3), ...
-                                            u,v,w,'color',color)
-                case 'patch'
-                    require(length(dim)==1 && vf.dofs_per_component==1)
-                    
-            end     
+            [X,Y,Z] = mesh.out_polygons;
+            func = @(node) node_list(node);
+            C = mesh.node_fun_to_poly(func);
+            require(all(size(X)==size(C)),'Error with node_fun_to_poly');
+            patch(X,Y,Z,C)
+            hold off
         end
         
+        function poly_out = node_fun_to_poly(mesh,func)
+            % poly_out = node_fun_to_poly(mesh,func)
+            % Takes a node_function, that accepts node indexes and puts it
+            % in outer polygon shape for patch            
+            out_nodes = mesh.outer_nodes;
+            poly_out = [];
+            for ele = 1:mesh.nnel   % Loop every element
+                ele_instance = mesh.element_create(ele);
+                % Get the outer faces of the element
+                faces = ele_instance.global_faces_from_nodes_id(out_nodes)';
+                for f = 1:size(faces,2) % Loop through the surfaces
+                    % Store the coordinates of each outer node in order
+                    poly_out = [poly_out func(faces(:,f))];
+                end
+            end
+        end
+        
+        %% Dependet but Complex Property Methods
+        function out_face = get.outer_face(mesh)
+            % out_face = get.outer_face(mesh)
+            % Returns a Face Object with  all the nodes that lie in the Boundary
+            % It finds it by finding which elements are connected to less
+            % elements.
+            if isempty(mesh.outer_face)
+                if mesh.dim == 2
+                    out_face = Face(1:mesh.nnodes,mesh);
+                    mesh.set('outer_face',out_face);
+                else
+                    nodelist = [];
+                    %                 par_plot = [];
+                    for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
+                        elelist = mesh.elementsofnode(nodenum);
+                        % Finds the elements the node belongs too
+                        element = mesh.element_create(elelist(1));
+                        if length(elelist) < element.n_nodes    % If
+                            nodelist = [nodelist nodenum];
+                            %                     for i = 1:length(elelist)
+                            %                     	allnodes = mesh.connect(elelist(i),:);  %should be [n_nodesx1]
+                            %                         local_node = find(nodenum == allnodes);
+                            %                         other_nodes = allnodes(element.connected_nodes(local_node));
+                            %                         for j = 1:length(other_nodes)
+                            %                             if any(other_nodes(j)==nodelist)
+                            %                                 par_plot = [par_plot; nodenum other_nodes(j)];
+                            %                             end
+                            %                         end
+                            %                     end
+                        end
+                    end
+                    %             big_elelist = unique(big_elelist);
+                    out_face = Face(nodelist,mesh);
+                    mesh.set('outer_face',out_face);
+                    %             outfaces.set('par_plot',par_plot);
+                end
+            else out_face = mesh.outer_face;
+            end
+        end
+        
+        function poly_out = get.polygons(mesh)
+            if isempty(mesh.polygons)
+                X = mesh.node_fun_to_poly(@(nodes) mesh.coords(nodes,1));
+                poly_out = zeros([size(X) mesh.dim]);
+                poly_out(:,:,1) = X; 
+                for d = 2:mesh.dim
+                    func = @(nodes) mesh.coords(nodes,d);
+                    poly_out(:,:,d) = mesh.node_fun_to_poly(func); 
+                end
+                mesh.set('polygons',poly_out);
+            else poly_out = mesh.polygons;
+            end
+        end
         %% Property Methods
-        function out = get.nnodes(obj)          %total number of nodes
-            out = size(get(obj,'coordinates'),1);
+        function out_nodes = get.outer_nodes(mesh)
+            out_nodes = mesh.get('outer_face').get('node_list');
         end
-        function out = get.nnel(obj)            %total number of elements
-            out = size(get(obj,'connections'),1);
+        function out = get.nnodes(mesh)          %total number of nodes
+            out = size(mesh.coords,1);
         end
-        function out = get.ndofspernode(obj)    %number of dofs per node
-            out = size(get(obj,'coordinates'),2);
+        function out = get.nnel(mesh)            %total number of elements
+            out = size(mesh.connect,1);
         end
-        function out = get.ndofs(obj)            %total system dofs
-            out = obj.nnodes()*obj.ndofspernode();
+        function out = get.ndofspernode(mesh)    %number of dofs per node
+            out = size(mesh.coords,2);
         end
-        function out = get.nodesperelement(obj) %nodes per element
-            out = size(get(obj,'connections'),2);
+        function out = get.ndofs(mesh)            %total system dofs
+            out = mesh.nnodes()*mesh.ndofspernode();
         end
-        function out = get.dim(obj)    %number of dofs per node
-            out = size(get(obj,'coordinates'),2);
+        function out = get.nodesperelement(mesh) %nodes per element
+            out = size(mesh.connect,2);
+        end
+        function out = get.dim(mesh)    %number of dofs per node
+            out = size(mesh.coords,2);
+        end
+        function coords_out = get.coords(mesh)
+            coords_out = mesh.get('coordinates');
+        end
+        function coords_out = get.connect(mesh)
+            coords_out = mesh.get('connections');
         end
     end  
     
@@ -262,7 +314,7 @@ classdef Mesh < hgsetget
         function sca = tometer()
             sca = 1e3;
         end
-        function obj = mesh_import(coordstr,connectstr,mate)
+        function mesh = mesh_import(coordstr,connectstr,mate)
             connections_in = load(connectstr);
             connections_in = connections_in(:,2:end);
             coordinates_in = load(coordstr);
@@ -281,9 +333,9 @@ classdef Mesh < hgsetget
             connections_in = aux;
             coordinates_in = coordinates_in/1e4;
             coordinates_in = coordinates_in/Mesh.tometer();
-            obj = Mesh(coordinates_in,connections_in,mate);
+            mesh = Mesh(coordinates_in,connections_in,mate);
         end
-        function obj = mesh_import2(coordstr,connectstr,mate)
+        function mesh = mesh_import2(coordstr,connectstr,mate)
             connections_in = load(connectstr);
             coordinates_in = load(coordstr);
             connections2 = zeros(size(connections_in));
@@ -294,7 +346,7 @@ classdef Mesh < hgsetget
             
             coordinates_in = coordinates_in/1e4;
             coordinates_in = coordinates_in/Mesh.tometer();
-            obj = Mesh(coordinates_in,connections_in,mate);
+            mesh = Mesh(coordinates_in,connections_in,mate);
         end
         function mesh2D = meshgen2D(type,A,M,E,nu,rho)
             % mesh2D = meshgen2D(A,M,E,nu,rho)

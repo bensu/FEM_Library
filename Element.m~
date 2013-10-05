@@ -115,7 +115,7 @@ classdef (Abstract) Element < hgsetget
                 if node_here && n == element.n_nodes_per_face % All nodes where in the list!
                     face_array = [face_array; element.face_connectivity(f,:)];  % Add it
                 end
-            end
+            end 
         end
         function global_ids = node_id_to_global(element,nodes_in)
             % global_ids = node_id_to_global(element,nodes_in)
@@ -123,9 +123,11 @@ classdef (Abstract) Element < hgsetget
             % Takes a list of local ids and returns their global
             % counterparts. Inverse of node_id_to_local
             % Every node in nodes_in should be < element.nnodes
-            func = @(node) iif(node <= element.nnodes, ...
-                                element.node_id_list(node), ...
-                                NaN);
+            nodes_in
+%             func = @(node) iif(node<=element.nnodes, ...
+%                                 find(node==element.node_id_list), ...
+%                                 NaN);
+            func = @(node) 
             global_ids = arrayfun(func,nodes_in);
         end
         function local_ids = node_id_to_local(element,nodes)

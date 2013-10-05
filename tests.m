@@ -7,8 +7,11 @@ clear clases
 
 addpath('./tests')
 
-patch_mech_H8 = Test_Mech_H8;
-run(patch_mech_H8)
+% patch_mech_H8 = Test_Mech_H8;
+% run(patch_mech_H8)
+% 
+% patch_mech_Q4 = Test_Mech_Q4;
+% run(patch_mech_Q4)
 
-patch_mech_Q4 = Test_Mech_Q4;
-run(patch_mech_Q4)
+plot_tests = Test_Plotting;
+run(plot_tests)

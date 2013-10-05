@@ -3,7 +3,7 @@ classdef Face < hgsetget
     %each element face is described by it's element id, and the plane
     %coordnum == value
     properties 
-        nodelist
+        node_list
         parent
         elementlist
         coordnumlist
@@ -14,31 +14,30 @@ classdef Face < hgsetget
         function newface = new_face(parent,coordnum,value)
             tol = 1e-15;
             coords = parent.get('coordinates');
-            nodelist = [];
+            node_list = [];
             for nn = 1:parent.nnodes()
                 if abs(coords(nn,coordnum)-value)<tol
-                    nodelist = [nodelist;nn];
+                    node_list = [node_list;nn];
                 end
             end
             if or(coordnum > 3,coordnum<1)
                 error(strcat('Invalid coordnumber:',num2str(coordnum)))
             end
-            newface = Face(nodelist,parent);
+            newface = Face(node_list,parent);
         end
        
     end
     
     methods
-        function obj = Face(nodelist,parent)
+        function face = Face(node_list,parent)
             if ~strcmp('Mesh',class(parent))
                 error('wrong type for parent')
             end
-            set(obj,'nodelist',nodelist);
-            set(obj,'parent',parent);
-            parent.add_outer_face(obj)
+            set(face,'node_list',node_list);
+            set(face,'parent',parent);
         end
         
-        function [facevalue, facecoord] = normalnodes2valcoord(obj,normalnodes)
+        function [facevalue, facecoord] = normalnodes2valcoord(face,normalnodes)
                 M = max(normalnodes);
                 if M==8
                     aux = 1;
@@ -56,10 +55,10 @@ classdef Face < hgsetget
                 facecoord = aux;
         end
         
-        function [elelist, facecoord, facevalue] = faceinelement(obj)
-            parent1 = obj.get('parent');
+        function [elelist, facecoord, facevalue] = faceinelement(face)
+            parent1 = face.get('parent');
             connections = parent1.get('connections');
-            nface = obj.get('nodelist');
+            nface = face.get('node_list');
             elematrix = zeros(size(connections,1),4); %MAGIC NUMBER 4
             count = ones(size(connections,1),1);
             for i = 1:length(nface)
@@ -91,15 +90,15 @@ classdef Face < hgsetget
                     normalnodes(j) = find(foundnodes(j) == allnodes);
                 end
 
-                [facevalue_aux, facecoord_aux] = normalnodes2valcoord(obj,normalnodes);
+                [facevalue_aux, facecoord_aux] = normalnodes2valcoord(face,normalnodes);
                 facevalue(i) = facevalue_aux;
                 facecoord(i) = facecoord_aux;
 
             end
             
-            obj.set('elementlist',elelist);
-            obj.set('coordnumlist',facecoord);
-            obj.set('valuelist',facevalue);
+            face.set('elementlist',elelist);
+            face.set('coordnumlist',facecoord);
+            face.set('valuelist',facevalue);
         end  
     end
 end

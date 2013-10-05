@@ -2,9 +2,9 @@ classdef Test_Mech_H8 < matlab.unittest.TestCase
   
     methods (Test)
         function patch_test(test_case)
-            for dim = 1:2
-                for coordnum = 1:3
-                    plot_on = false;
+            for dim = 2
+                for coordnum = 1
+                    plot_on = true;
                     %% Mesh & Material
                     n_dim = 3;
                     % Cubes dimension a,b,c

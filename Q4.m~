@@ -2,7 +2,7 @@ classdef Q4 < Element
     properties (Constant)
         nnodes = 4;
         node_connectivity = [1 2;1 3;2 4;3 4];
-        face_connectivity = [1 2 4 3];
+         
     end
     methods 
         function ele_out = Q4(n_node_dofs,n_element_dofs,nodes_in,material_in)
@@ -80,6 +80,16 @@ classdef Q4 < Element
             dN_out = [element.dN_dxi(local_coords);element.dN_deta(local_coords)];
         end
         
+        function cn_out = connected_nodes(element,nodenum)
+            % cn_out = connected_nodes(element,nodenum)
+            % returns a 1x? vector with the nodes nodenum is connected to.
+            NC = element.node_connectivity;
+            for n = 1:element.nnodes
+                if any(NC(n,:) == nodenum)
+                    cn_out = [cn_out ];
+                end
+            end
+        end
     end
 end
     

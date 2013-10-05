@@ -1,0 +1,16 @@
+classdef Test_Plotting < matlab.unittest.TestCase
+    methods (Test)
+        function test_H8(testCase)
+            dim = 2;
+            a = 2; m = dim;
+            b = 1; n = dim;
+            c = 3; p = dim;
+            E = 2;                                % Youngs modulus
+            nu = 0.3;                               % Poisson's ratio
+            rho = 7840;                           % Density
+            sides = [a,b,c];
+            mesh = Mesh.meshgen('Mech_H8',sides,[m n p],E,nu,rho);
+          
+        end
+    end
+end
