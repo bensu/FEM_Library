@@ -39,7 +39,7 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
 %                     loads.qinface(mesh,face,vector);
 %                     loads.node_function
 
-%                   %% NOT GENERALIZED FOR D
+%                   %% NOT GENERALIZED FOR Dimensions
                     sigma = 2;
                     F = sigma*thickness*sides(mod(coordnum,2)+1)/4;
                     q1 = zeros(2,1); q1(coordnum) = F;                    
