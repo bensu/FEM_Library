@@ -1,7 +1,7 @@
 classdef FemCase < hgsetget
     properties
         mesh
-        SElist
+        SElist  %% ???
         bc
         loads
         displacements
@@ -77,21 +77,19 @@ classdef FemCase < hgsetget
         
         %% Initialize
         
-        function femcase = FemCase(mesh_in,bc_in,loads_in)
+        function femcase = FemCase(mesh_in,varargin)
+            % femcase = FemCase(mesh_in)
+            % femcase = FemCase(mesh_in,bc_in,loads_in)
             femcase.set('mesh',mesh_in);
-            if isa(bc_in,'BC')
-                BC_in = bc_in;
-            elseif isempty(bc_in)
+            if isempty(varargin)
                 BC_in = BC(femcase.nnodes,femcase.dofs_per_node, ...
-                            femcase.nnel, femcase.dofs_per_ele);
-            end
-            femcase.set('bc',BC_in);
-            if isa(loads_in,'Loads')
-                Loads_in = loads_in;
-            elseif isempty(bc_in)
+                                femcase.nnel, femcase.dofs_per_ele);
                 Loads_in = Loads(femcase.nnodes,femcase.dofs_per_node, ...
                             femcase.nnel, femcase.dofs_per_ele);
+            else BC_in = varargin{1};
+                Loads_in = varargin{2};
             end
+            femcase.set('bc',BC_in);
             femcase.set('loads',Loads_in);
             Displacements_in = Displacements(femcase.nnodes, ...
                 femcase.dofs_per_node, femcase.nnel, femcase.dofs_per_ele);

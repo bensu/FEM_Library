@@ -4,20 +4,22 @@ classdef Mesh < hgsetget
         coordinates
         connections
         material
+        dofs_per_node
+        dofs_per_ele
         outer_face
         polygons            % Array(:,:,1:3) = [X;Y;Z] for patch. Stored for Speed
         parent
         ncambio
-        n_node_dofs         % Total dofs per node
-        n_element_dofs      % Total dofs that belong only to the element, not the nodes
+        v3
     end
     
     properties (Dependent)
         nnodes
         nnel
-        ndofspernode
-        ndofs
-        nodesperelement
+        nodes_per_ele
+        n_node_dofs         % Total dofs belonging to nodes
+        n_ele_dofs          % Total dofs belonging to element but not nodes
+        ndofs               % Total number of dofs in the mesh
         coords
         connect
         dim
@@ -34,8 +36,8 @@ classdef Mesh < hgsetget
             set(mesh,'material',material);
             set(mesh,'element_type',type);
             ele = mesh.create_ele(1);
-            set(mesh,'n_node_dofs',ele.get('n_node_dofs'));       % Dofs per node
-            set(mesh,'n_element_dofs',ele.get('n_element_dofs'));  
+            set(mesh,'dofs_per_node',ele.get('dofs_per_node'));       % Dofs per node
+            set(mesh,'dofs_per_ele',ele.get('dofs_per_ele'));  
         end
 
         %% Coordinates Methods
@@ -77,7 +79,7 @@ classdef Mesh < hgsetget
             nodesout = reshape(ncambio_aux(mesh.get('nodesout')),1,[]);      
         end 
         function ind = nodesindex(mesh,nodelist)
-            ndofpernode = mesh.ndofspernode();
+            ndofpernode = mesh.dofs_per_node();
             ind = zeros(length(nodelist),1);
             for i = 1:length(nodelist)
                 range = (ndofpernode*(i-1)+1):(ndofpernode*i);
@@ -152,12 +154,15 @@ classdef Mesh < hgsetget
                                     mesh.last_node_dof;
         end
         %% Assembly Methods
-        function element = create_ele(mesh,ele_num)
+        function element = create_ele(mesh,ele_num,varargin)
+            % element = create_ele(mesh,ele_num)
+            % element = create_ele(mesh,ele_num,displacements)
             % CREATES THE APPROPIATE ELEMENT FROM ID: ele_num
+            % If the displacements where found, then dis_in is stored
             connect = mesh.get('connections');
-            coordinat = mesh.get('coordinates');
-            for i = 1:mesh.nodesperelement()
-                nodos(i) = Node(connect(ele_num,i),coordinat(connect(ele_num,i),:),mesh);
+            coords = mesh.get('coordinates');
+            for i = 1:mesh.nodes_per_ele;
+                nodos(i) = Node(connect(ele_num,i),coords(connect(ele_num,i),:));
             end
             % BIG PROBLEM HERE -> How to initialize by element type?
             switch mesh.element_type
@@ -165,8 +170,19 @@ classdef Mesh < hgsetget
                     element = Mech_H8(ele_num,nodos,mesh.get('material'));   % HARDCODED
                 case 'Mech_Q4'
                     element = Mech_Q4(ele_num,nodos,mesh.get('material'));
+                case 'Mech_ShellQ4'
+                    mesh.v3(
+                    element = Mech_ShellQ4(ele_num,nodos,mesh.get('material'));
                 otherwise
                     error(strcat('Element Type: ',mesh.element_type,' not found'));
+            end
+            if ~isempty(varargin)
+                dis_aux = varargin{1};
+                if length(dis_aux) == mesh.ndofs
+                    dis_in = dis_aux(element.dof_list);
+                else dis_in = dis_aux;
+                end
+                element.set('dof_dis',dis_in);
             end
         end
         function stiffness = stiff(mesh)
@@ -176,7 +192,7 @@ classdef Mesh < hgsetget
                 for ele = 1:nnel
                     element = mesh.create_ele(ele);
                     kele = element.K(gaussn);
-                    ind = element.ldofsid();
+                    ind = element.dof_list;
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;
                 end
         end
@@ -246,29 +262,16 @@ classdef Mesh < hgsetget
                     mesh.set('outer_face',out_face);
                 else
                     nodelist = [];
-                    %                 par_plot = [];
                     for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
                         elelist = mesh.elementsofnode(nodenum);
                         % Finds the elements the node belongs too
                         element = mesh.create_ele(elelist(1));
                         if length(elelist) < element.n_nodes    % If
                             nodelist = [nodelist nodenum];
-                            %                     for i = 1:length(elelist)
-                            %                     	allnodes = mesh.connect(elelist(i),:);  %should be [n_nodesx1]
-                            %                         local_node = find(nodenum == allnodes);
-                            %                         other_nodes = allnodes(element.connected_nodes(local_node));
-                            %                         for j = 1:length(other_nodes)
-                            %                             if any(other_nodes(j)==nodelist)
-                            %                                 par_plot = [par_plot; nodenum other_nodes(j)];
-                            %                             end
-                            %                         end
-                            %                     end
                         end
                     end
-                    %             big_elelist = unique(big_elelist);
                     out_face = Face(nodelist,mesh);
                     mesh.set('outer_face',out_face);
-                    %             outer_faces.set('par_plot',par_plot);
                 end
             else out_face = mesh.outer_face;
             end
@@ -293,8 +296,7 @@ classdef Mesh < hgsetget
         function in_nodes = get.inner_nodes(mesh)
             % in_nodes = get.inner_nodes(mesh)
             % Finds a list of inner node by comparing to the outer nodes
-            % Computationally expensive, stored efficiency
-            % (???)
+            % Computationally expensive, maybe stored for efficiency (???)
             in_nodes = [];
             count = 1;
             for n = 1:mesh.nnodes()
@@ -313,14 +315,17 @@ classdef Mesh < hgsetget
         function out = get.nnel(mesh)            %total number of elements
             out = size(mesh.connect,1);
         end
-        function out = get.ndofspernode(mesh)    %number of dofs per node
-            out = size(mesh.coords,2);
+        function out = get.nodes_per_ele(mesh)
+            out = size(mesh.connect,2);
+        end
+        function out = get.n_node_dofs(mesh)    %number of dofs per node
+            out = mesh.get('dofs_per_node')*mesh.nnodes;
+        end
+        function out = get.n_ele_dofs(mesh)    %number of dofs per node
+            out = mesh.get('dofs_per_ele')*mesh.nnel;
         end
         function out = get.ndofs(mesh)            %total system dofs
-            out = mesh.nnodes()*mesh.ndofspernode();
-        end
-        function out = get.nodesperelement(mesh) %nodes per element
-            out = size(mesh.connect,2);
+            out = mesh.nnodes()*mesh.dofs_per_node();
         end
         function out = get.dim(mesh)    %number of dofs per node
             out = size(mesh.coords,2);
@@ -425,6 +430,23 @@ classdef Mesh < hgsetget
                 end
             end
         end
+        function mesh = ShellQ4Mesh(a,b,c,m,n,p,E,nu,rho)
+            mesh = Mesh.meshgen('Mech_ShellQ4',[a,b,c],[m,n,p],E,nu,rho);
+            mesh.set('material',Material(1,'Iso',E,nu,rho));
+            mesh.set('dofs_per_node',5);
+            coords = mesh.get('coordinates');
+            number_of_doubled_nodes = size(coords,1);
+            require(rem(number_of_doubled_nodes,2)==0,'Uneven number of nodes')
+            xb = coords(1:number_of_doubled_nodes/2,:); %bottom nodes
+            xt = coords((number_of_doubled_nodes/2+1):end,:);
+            xm = (xb + xt)/2;
+            v3_in = (xt - xb);
+            mesh.set('coordinates',xm);
+            mesh.set('v3',v3_in);
+            connect = mesh.get('connections');
+            mesh.set('connections',connect(:,1:4));
+            mesh.get('connections');
+        end   
     end
 end
 

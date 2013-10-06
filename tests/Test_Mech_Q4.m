@@ -4,7 +4,7 @@ classdef Test_Mech_Q4 < matlab.unittest.TestCase
         function patch_test(test_case)
             for dim = 2
                 for coordnum = 2
-                    plot_on = true;
+                    plot_on = false;
                     %% Mesh & Material
 
                     % Plate dimension a,b,thickness

@@ -162,14 +162,6 @@ classdef (Abstract) Element < hgsetget
             end
         end
         
-        function ind = ldofsid(obj)
-            ind = [];
-            nodelist = obj.get('nodes');
-            for i = 1:length(nodelist)
-                node = nodelist(i);
-                ind = [ind node.ldofsid()];
-            end            
-        end
         
         %% DOFS
         
@@ -200,15 +192,18 @@ classdef (Abstract) Element < hgsetget
         %% Setters and Getters
         
         function [xi, eta, mu] = components(element,local_coords)
-            if element.dim == 3 && length(local_coords) == 3
+            if length(local_coords) == 3
                 xi = local_coords(1);
                 eta = local_coords(2);
                 mu = local_coords(3);
-            elseif element.dim == 2 && length(local_coords) == 2
+            elseif length(local_coords) == 2
                 xi = local_coords(1);
                 eta = local_coords(2);
-                mu = NaN;
-            else error('Dimension missmatch local_coords and element dim')
+                if element.dim == 3
+                    mu = 0;
+                else mu = NaN;
+                end
+%             else error('Dimension missmatch local_coords and element dim')
             end
                 
         end

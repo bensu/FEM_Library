@@ -13,5 +13,8 @@ run(patch_mech_H8)
 patch_mech_Q4 = Test_Mech_Q4;
 run(patch_mech_Q4)
 
+patch_mech_ShellQ4 = Test_Mech_ShellQ4 ;
+run(patch_mech_ShellQ4)
+
 % plot_tests = Test_Plotting;
 % run(plot_tests)

@@ -7,8 +7,6 @@ classdef Q4 < Element
     end
     methods 
         function ele_out = Q4(id_in,n_node_dofs,n_element_dofs,nodes_in,material_in)
-            require(length(nodes_in(1).get('coordinates'))==2, ...
-                'Mesh should be 2D');
             ele_out = ele_out@Element(id_in,n_node_dofs,n_element_dofs, ...
                                 nodes_in,material_in);
         end  

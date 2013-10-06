@@ -11,5 +11,19 @@ classdef Mech_H8 < H8 & Mechanics
             ele_out = ele_out@H8(id_in,n_node_dofs,n_element_dofs, ...
                                 nodes_in,material_in);
         end
+        function Ndevsparse = DNsparse(element,local_coords)
+            % Ndevsparse = DNsparse(element,xi,eta,mu)
+            % Creates an Auxiliary Matrix for B
+            AUX = element.DN(local_coords);
+            Ndevsparse = [];
+            for i = 1:element.n_nodes
+                if element.dim == 2
+                    aux0 = blkdiag(AUX(:,i),AUX(:,i));
+                elseif element.dim == 3
+                    aux0 = blkdiag(AUX(:,i),AUX(:,i),AUX(:,i));
+                end
+                Ndevsparse = [Ndevsparse aux0];
+            end
+        end
     end    
 end

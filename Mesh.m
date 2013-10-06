@@ -10,6 +10,7 @@ classdef Mesh < hgsetget
         polygons            % Array(:,:,1:3) = [X;Y;Z] for patch. Stored for Speed
         parent
         ncambio
+        v3
     end
     
     properties (Dependent)
@@ -160,8 +161,8 @@ classdef Mesh < hgsetget
             % If the displacements where found, then dis_in is stored
             connect = mesh.get('connections');
             coords = mesh.get('coordinates');
-            for i = 1:mesh.nodes_per_ele;
-                nodos(i) = Node(connect(ele_num,i),coords(connect(ele_num,i),:),mesh);
+            for n = 1:mesh.nodes_per_ele;
+                nodos(n) = Node(connect(ele_num,n),coords(connect(ele_num,n),:));
             end
             % BIG PROBLEM HERE -> How to initialize by element type?
             switch mesh.element_type
@@ -169,6 +170,13 @@ classdef Mesh < hgsetget
                     element = Mech_H8(ele_num,nodos,mesh.get('material'));   % HARDCODED
                 case 'Mech_Q4'
                     element = Mech_Q4(ele_num,nodos,mesh.get('material'));
+                case 'Mech_ShellQ4'
+                    if length(nodos)==4
+                        for n = 1:mesh.nodes_per_ele;
+                            nodos(n).set('v3',mesh.v3(connect(ele_num,n),:));
+                        end
+                    end
+                    element = Mech_ShellQ4(ele_num,nodos,mesh.get('material'));
                 otherwise
                     error(strcat('Element Type: ',mesh.element_type,' not found'));
             end
@@ -188,7 +196,7 @@ classdef Mesh < hgsetget
                 for ele = 1:nnel
                     element = mesh.create_ele(ele);
                     kele = element.K(gaussn);
-                    ind = element.ldofsid();
+                    ind = element.dof_list;
                     stiffness(ind,ind) = stiffness(ind,ind) + kele;
                 end
         end
@@ -258,29 +266,16 @@ classdef Mesh < hgsetget
                     mesh.set('outer_face',out_face);
                 else
                     nodelist = [];
-                    %                 par_plot = [];
                     for nodenum = 1:mesh.nnodes()   % Loop through all the nodes
                         elelist = mesh.elementsofnode(nodenum);
                         % Finds the elements the node belongs too
                         element = mesh.create_ele(elelist(1));
                         if length(elelist) < element.n_nodes    % If
                             nodelist = [nodelist nodenum];
-                            %                     for i = 1:length(elelist)
-                            %                     	allnodes = mesh.connect(elelist(i),:);  %should be [n_nodesx1]
-                            %                         local_node = find(nodenum == allnodes);
-                            %                         other_nodes = allnodes(element.connected_nodes(local_node));
-                            %                         for j = 1:length(other_nodes)
-                            %                             if any(other_nodes(j)==nodelist)
-                            %                                 par_plot = [par_plot; nodenum other_nodes(j)];
-                            %                             end
-                            %                         end
-                            %                     end
                         end
                     end
-                    %             big_elelist = unique(big_elelist);
                     out_face = Face(nodelist,mesh);
                     mesh.set('outer_face',out_face);
-                    %             outer_faces.set('par_plot',par_plot);
                 end
             else out_face = mesh.outer_face;
             end
@@ -439,6 +434,23 @@ classdef Mesh < hgsetget
                 end
             end
         end
+        function mesh = ShellQ4Mesh(a,b,c,m,n,p,E,nu,rho)
+            mesh = Mesh.meshgen('Mech_ShellQ4',[a,b,c],[m,n,p],E,nu,rho);
+            mesh.set('material',Material(1,'Iso',E,nu,rho));
+            mesh.set('dofs_per_node',5);
+            coords = mesh.get('coordinates');
+            number_of_doubled_nodes = size(coords,1);
+            require(rem(number_of_doubled_nodes,2)==0,'Uneven number of nodes')
+            xb = coords(1:number_of_doubled_nodes/2,:); %bottom nodes
+            xt = coords((number_of_doubled_nodes/2+1):end,:);
+            xm = (xb + xt)/2;
+            v3_in = (xt - xb);
+            mesh.set('coordinates',xm);
+            mesh.set('v3',v3_in);
+            connect = mesh.get('connections');
+            mesh.set('connections',connect(:,1:4));
+            mesh.get('connections');
+        end   
     end
 end
 

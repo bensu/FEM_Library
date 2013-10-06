@@ -84,7 +84,7 @@ classdef (Abstract) Mechanics < Physics
             
             % NOTE - Needs refactoring, since now its specifically
             % programmed for H8 & Q4
-            K_out = zeros(element.dim*element.n_nodes);
+            K_out = zeros(element.n_dofs);
             [gaussp, gaussw] = lgwt(gauss_order,-1,1);
             for i = 1:gauss_order
                 xi = gaussp(i);
@@ -108,20 +108,7 @@ classdef (Abstract) Mechanics < Physics
                 end
             end
         end
-        function Ndevsparse = DNsparse(element,local_coords)
-            % Ndevsparse = DNsparse(element,xi,eta,mu)
-            % Creates an Auxiliary Matrix for B
-            AUX = element.DN(local_coords);
-            Ndevsparse = [];
-            for i = 1:element.n_nodes
-                if element.dim == 2
-                    aux0 = blkdiag(AUX(:,i),AUX(:,i));
-                elseif element.dim == 3
-                    aux0 = blkdiag(AUX(:,i),AUX(:,i),AUX(:,i));
-                end
-                Ndevsparse = [Ndevsparse aux0];
-            end
-        end
+
         
         %% Setters & Getters
         
