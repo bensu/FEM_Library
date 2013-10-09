@@ -161,8 +161,8 @@ classdef FemCase < hgsetget
         
         function solve(femcase)
             meshnow = femcase.get('mesh');
-            stiffness = meshnow.stiff();
-            D = zeros(meshnow.ndofs(),1);
+            stiffness = meshnow.stiff;
+            D = zeros(meshnow.ndofs,1);
             free = femcase.get('bc').all_dofs;
             loadsv = femcase.get('loads').all_dofs;
             D(free) = stiffness(free,free)\loadsv(free);

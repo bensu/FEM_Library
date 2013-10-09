@@ -5,12 +5,12 @@ classdef (Abstract) Mechanics < Physics
         n_stress_components
     end
     properties (Dependent)
+        dis
         mech_dis
         mech_n_node_dofs
         mech_n_ele_dofs
         mech_n_dofs
         mech_dofs_id
-        dU_to_strain
         n_dofs_per_node %?????
     end
     methods
@@ -44,7 +44,7 @@ classdef (Abstract) Mechanics < Physics
             strain_voight = zeros(element.nnodes,element.n_stress_components);
             for n = 1:element.nnodes
                 l_coords = element.node_local_coords(n,:);
-                strain_voight(n,:) = (element.B(l_coords)*element.mech_dis)';
+                strain_voight(n,:) = (element.B(l_coords)*element.dis)';
             end
         end
         function B_out = B(element,local_coords)
@@ -55,9 +55,8 @@ classdef (Abstract) Mechanics < Physics
             % NOTE - Needs refactoring, since now its specifically
             % programmed for H8
 
-            Tinv = element.invT(local_coords);
-            Ndevsparse = element.DNsparse(local_coords);
-            B_out = element.dU_to_strain*Tinv*Ndevsparse;
+            B_out = element.dU_to_strain*element.invT(local_coords)* ...
+                        element.DNsparse(local_coords);
         end   
         function C_out = C(element)
             % C_out [6x6] = C(element)
@@ -108,22 +107,7 @@ classdef (Abstract) Mechanics < Physics
                 end
             end
         end
-
-        
-        %% Setters & Getters
-        
-        function dis_out = get.mech_dis(element)
-            aux = element.get('dof_dis');
-            dis_out = aux(element.mech_dofs_id);
-        end
-        function dof_list = get.mech_dofs_id(element)
-            ind = [];
-            for n = 1:element.nnodes
-                ind = [ind; index_range(element.dofs_per_node,n,element.mech_node_dofs_id)];
-            end
-            dof_list = [ind; element.n_node_dofs + element.mech_ele_dofs_id];
-        end
-        function H_out = get.dU_to_strain(element)
+        function H_out = dU_to_strain(element)
             AUX = zeros(6,9);
             AUX([1 10 18 22 26 35 42 47 51]) = 1;
             if element.dim == 3
@@ -133,6 +117,19 @@ classdef (Abstract) Mechanics < Physics
             end
         end
         
+        %% Setters & Getters
+        
+        function dis_out = get.mech_dis(element)
+            dis_out = element.dis(element.mech_dofs_id);
+        end
+        function dof_list = get.mech_dofs_id(element)
+            ind = [];
+            for n = 1:element.nnodes
+                ind = [ind; index_range(element.dofs_per_node,n,element.mech_node_dofs_id)];
+            end
+            dof_list = [ind; element.n_node_dofs + element.mech_ele_dofs_id];
+        end
+       
         function n_dof = get.mech_n_node_dofs(element)
             n_dof = length(element.mech_node_dofs_id);
         end
@@ -141,6 +138,9 @@ classdef (Abstract) Mechanics < Physics
         end
         function n_dof = get.mech_n_dofs(element)
             n_dof = element.mech_n_node_dofs + element.mech_n_ele_dofs;
+        end
+        function dis = get.dis(element)
+            dis = element.get('dof_dis');
         end
     end
             

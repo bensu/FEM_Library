@@ -1,6 +1,7 @@
 classdef ShellQ4 < Q4
     properties (Dependent)
         v3
+        ele_thickness
     end
     methods
         function obj = ShellQ4(id_in,nodes,material,dofs_per_node,dofs_per_ele)
@@ -53,6 +54,12 @@ classdef ShellQ4 < Q4
             for i = 1:total_nodes
                 V3_out(:,i) = node_list(i).get('v3');
             end
+        end
+        function t = get.ele_thickness(element)
+            % t = get.ele_thickness(element)
+            % Gives an approximation of the element thickness withs the
+            % average of all the node thicknesses
+            t = mean(element.t_at_node);
         end
             
         %% Geometry Functions

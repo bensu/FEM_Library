@@ -58,10 +58,10 @@ classdef Compound_Function < hgsetget
         
         %% Helpers
         function num = number_of_elements(compound)
-            num = compound.get('element_component').get('total_number_of_components');            
+            num = compound.get('element_component').get('n_components');            
         end
         function num = number_of_nodes(compound)
-            num = compound.get('node_component').get('total_number_of_components');            
+            num = compound.get('node_component').get('n_components');            
         end
         function num = dofs_per_node(compound)
             num = compound.get('node_component').get('dofs_per_component');            

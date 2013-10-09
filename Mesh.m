@@ -25,7 +25,6 @@ classdef Mesh < hgsetget
         dim
         outer_nodes
         inner_nodes
-        last_node_dof
     end
     
     methods
@@ -35,11 +34,8 @@ classdef Mesh < hgsetget
             set(mesh,'connections',connections);
             set(mesh,'material',material);
             set(mesh,'element_type',type);
-            ele = mesh.create_ele(1);
-            set(mesh,'dofs_per_node',ele.get('dofs_per_node'));       % Dofs per node
-            set(mesh,'dofs_per_ele',ele.get('dofs_per_ele'));  
         end
-
+        
         %% Coordinates Methods
         
         function value = mincoordval(mesh,coordnum)
@@ -177,6 +173,13 @@ classdef Mesh < hgsetget
                         end
                     end
                     element = Mech_ShellQ4(ele_num,nodos,mesh.get('material'));
+                case 'ME_ShellQ4'
+                    if length(nodos)==4
+                        for n = 1:mesh.nodes_per_ele;
+                            nodos(n).set('v3',mesh.v3(connect(ele_num,n),:));
+                        end
+                    end
+                    element = ME_ShellQ4(ele_num,nodos,mesh.get('material'));   
                 otherwise
                     error(strcat('Element Type: ',mesh.element_type,' not found'));
             end
@@ -189,16 +192,22 @@ classdef Mesh < hgsetget
                 element.set('dof_dis',dis_in);
             end
         end
+        function [K, ind] = stiffness_index(mesh,ele)
+            % This function exists not to repeat the element creation.
+            gaussn = 2;
+        	element = mesh.create_ele(ele);
+            K = element.K(gaussn);
+            ind = [element.node_dof_list; ...
+                    element.ele_dof_list + mesh.n_node_dofs];
+        end
         function stiffness = stiff(mesh)
-                nnel = mesh.nnel();
-                stiffness = sparse(mesh.ndofs(),mesh.ndofs());
-                gaussn = 2;
-                for ele = 1:nnel
-                    element = mesh.create_ele(ele);
-                    kele = element.K(gaussn);
-                    ind = element.dof_list;
-                    stiffness(ind,ind) = stiffness(ind,ind) + kele;
+                stiffness = sparse(mesh.ndofs,mesh.ndofs);
+                for ele = 1:mesh.nnel
+                    [K, ind] = stiffness_index(mesh,ele);
+                    stiffness(ind,ind) = stiffness(ind,ind) + K;
                 end
+                require(all(size(stiffness)==mesh.ndofs*[1,1]), ...
+                                        'Wrong size after funciton')
         end
         
         
@@ -296,7 +305,7 @@ classdef Mesh < hgsetget
         end
         
 
-        %% Property Methods
+        %% Getters
         function in_nodes = get.inner_nodes(mesh)
             % in_nodes = get.inner_nodes(mesh)
             % Finds a list of inner node by comparing to the outer nodes
@@ -329,7 +338,8 @@ classdef Mesh < hgsetget
             out = mesh.get('dofs_per_ele')*mesh.nnel;
         end
         function out = get.ndofs(mesh)            %total system dofs
-            out = mesh.nnodes()*mesh.dofs_per_node();
+            out = mesh.nnodes*mesh.get('dofs_per_node') + ...
+            mesh.nnel*mesh.get('dofs_per_ele');
         end
         function out = get.dim(mesh)    %number of dofs per node
             out = size(mesh.coords,2);
@@ -340,8 +350,13 @@ classdef Mesh < hgsetget
         function coords_out = get.connect(mesh)
             coords_out = mesh.get('connections');
         end
-        function dof_n = get.last_node_dof(mesh)    % Last dof belonging to a node
-            dof_n = mesh.n_node_dofs*mesh.nnodes;
+        
+        %% Setters
+        function set.element_type(mesh,type_in)
+            mesh.element_type = type_in;
+            ele = mesh.create_ele(1);
+            set(mesh,'dofs_per_node',ele.get('dofs_per_node'));       % Dofs per node
+            set(mesh,'dofs_per_ele',ele.get('dofs_per_ele'));  
         end
     end  
     

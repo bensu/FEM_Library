@@ -26,7 +26,6 @@ classdef (Abstract) Element < hgsetget
         node_dof_list
         ele_dof_list
         n_dofs              % Total number of dofs in the element
-        last_node_dof       % Mesh's last node dof
     end
     methods (Abstract)
         N_out = N(element,local_coords)
@@ -135,8 +134,7 @@ classdef (Abstract) Element < hgsetget
             % counterparts. Inverse of node_id_to_local
             % Every node in nodes_in should be < element.nnodes
             func = @(node) iif(node <= element.nnodes, ...
-                                element.node_id_list(node), ...
-                                NaN);
+                                element.node_id_list(node), NaN);
             global_ids = arrayfun(func,nodes_in);
         end
         function local_ids = node_id_to_local(element,nodes)
@@ -185,8 +183,7 @@ classdef (Abstract) Element < hgsetget
         function dof_list = get.ele_dof_list(element)
             % dof_list = dof_list(mesh,ele_num)
             % Returns a list with all the element - element_dofs
-            dof_list = index_range(element.n_ele_dofs,element.get('id')) + ...
-                                    element.last_node_dof;
+            dof_list = index_range(element.n_ele_dofs,element.get('id'));
         end
 
         %% Setters and Getters
@@ -232,14 +229,14 @@ classdef (Abstract) Element < hgsetget
             dofs_n = element.nnodes*element.dofs_per_node;
         end
         function dofs_n = get.n_ele_dofs(element)
-            dofs_n = element.nnodes*element.dofs_per_ele;
+            dofs_n = element.dofs_per_ele;
         end
         function dofs_n = get.n_dofs(element)
             dofs_n = element.n_ele_dofs + element.n_node_dofs;
         end
-        function dof_n = get.last_node_dof(element)    % Last dof belonging to a node
-            dof_n = element.dofs_per_node*element.nnodes;
-        end
+%         function dof_n = get.last_node_dof(element)    % Last dof belonging to a node
+%             dof_n = element.dofs_per_node*element.nnodes;
+%         end
         
         function set.id(element,id_in)
             require(isscalar(id_in) && mod(id_in,1)==0,'Wrong element Id');
